@@ -76,7 +76,8 @@ error()
 
 # ==================== LOCAL HELPERS ====================
 # Blocking wait for user input (negative answer exits)
-user_input() {
+user_input()
+{
   local ans save_state
   echo
   echo "Press ${tty_bold}RETURN${tty_reset}/${tty_bold}ENTER${tty_reset} to continue or any other key to abort:"
@@ -91,7 +92,22 @@ user_input() {
   fi
 }
 
-determine_sourcedir(){
+# Blocking wait for user yes/no (negative answer does not exit script):
+# YES = 1, NO = 0
+user_yesno()
+{
+  local yn
+  while true; do
+      read -p "$* [y/n]: " yn
+      case "${yn}" in
+          [Yy]*) return 1 ;;
+          [Nn]*) return 0 ;;
+      esac
+  done
+}
+
+determine_sourcedir()
+{
     emacsver=`emacs --version | awk 'NR==1{print $3}'`
     debug "Found Emacs version ${emacsver}"
     if (( $(echo "${emacsver} > 26" |bc -l) )); then
@@ -103,14 +119,41 @@ determine_sourcedir(){
     eval "$1='${sourcedir}'"
 }
 
+pkg_install()
+{
+    pkgArray=("emacs" "ripgrep")
+    if ! type apt > /dev/null; then
+      debug "Binary 'apt' not found, assuming rpm-based system"
+      installed="$(rpm -qa)"
+      pkgmgr="dnf"
+    else
+      debug "Found binary 'apt', assuming deb-based system"
+      installed="$(dpkg-query -l)"
+      pkgmgr="apt"
+      pkgArray+=("spellcheck")
+    fi
+
+    for pkg in "${pkgArray[@]}"; do
+      if grep -q "${pkg}" <<< "${installed}"; then
+        debug "Found package ${pkg} on system"
+      else
+        debug "Package ${pkg} is not installed"
+        sudo "${pkgmgr}" install -f "${pkg}"
+      fi
+    done
+}
+
 # ==================== ACTUAL FUNCTIONALITY ====================
 install_doom()
 {
-    # TODO: check if
-    # emacs
-    # spellcheck
-    # ripgrep
-    # are installed
+
+    info "About to install Doom Emacs. "
+    user_yesno "Do you want to install required packages (needs sudo)?"
+    ans=$?
+    if [[ "${ans}" -eq 1 ]]; then
+      pkg_install
+    fi
+
     determine_sourcedir sourcedir
     if [[ -d "${emacsd}" ]]; then
         warn "Found existing ${emacsd}! Do you want to create a backup copy and continue?"
@@ -131,20 +174,17 @@ install_doom()
     cp -r "${sourcedir}/.doom.d" "${doomd}"
     info "Done"
     info "Running doom installer..."
-    PATH="${emacsd}/bin:${PATH}"
-    doom install
+    "${emacsd}/bin/doom" install
     info "Done"
     info "Remember to install Doom's fonts using"
     info "   M-x nerd-icons-install-fonts"
     info "ALL DONE"
-
     return 0
 }
 
 uninstall_doom()
 {
     error "Not implemented yet"
-    return 0
 }
 
 update_doom()
