@@ -63,6 +63,7 @@ info()
   printf "${tty_bold}INFO: %s${tty_reset}\n" "$(shell_join "$@")"
 }
 
+
 warn()
 {
   printf "${tty_bold}${tty_magenta}WARNING: %s${tty_reset}\n" "$(chomp "$1")"
@@ -156,16 +157,18 @@ install_doom()
 
     determine_sourcedir sourcedir
     if [[ -d "${emacsd}" ]]; then
+        embkp="${emacsdbkp}_${datesuffix}"
         warn "Found existing ${emacsd}! Do you want to create a backup copy and continue?"
         user_input
-        mv "${emacsd}" "${emacsdbkp}"
-        debug "Renamed ${emacsd} to ${emacsdbkp}"
+        mv "${emacsd}" "${embkp}"
+        debug "Renamed ${emacsd} to ${embkp}"
     fi
     if [[ -d "${doomd}" ]]; then
+        dmbkp="${doomdbkp}_${datesuffix}"
         warn "Found existing ${doomd}! Do you want to create a backup copy and continue?"
         user_input
-        mv "${doomd}" "${doomdbkp}"
-        debug "Renamed ${doomd} to ${doomdbkp}"
+        mv "${doomd}" "${dmbkp}"
+        debug "Renamed ${doomd} to ${dmbkp}"
     fi
     info "Setting up ${emacsd}..."
     cp -r "${sourcedir}/.emacs.d" "${emacsd}"
@@ -184,7 +187,29 @@ install_doom()
 
 uninstall_doom()
 {
-    error "Not implemented yet"
+    warning "This will PERMANENTLY remove your current ~/.emacs.d and ~/.doom.d configuration"
+    user_yesno "Are you sure you want to do this?"
+
+    info "Removing configuration directories..."
+    rm -rf "${emacsd}"
+    rm -rf "${emacsd}"
+    info "Done"
+
+    debug "Looking for previously backed-up config directories"
+    embkp=`ls -dt "${emacsdbkp}_"* 2>/dev/null`
+    dmbkp=`ls -dt "${doomdbkp}_"* 2>/dev/null`
+
+    if [[ -n "${embkp}" ]]; then
+      info "Restoring ${embkp}"
+      mv "${embkp}" "${emacsd}"
+      info "Done"
+    fi
+    if [[ -n "${dmbkp}" ]]; then
+      info "Restoring ${dmbkp}"
+      mv "${embkp}" "${emacsd}"
+      info "Done"
+    fi
+    info "ALL DONE"
 }
 
 update_doom()
@@ -240,10 +265,11 @@ if [[ "${#optArray[@]}" -lt 1 ]]; then
 fi
 
 # Set up local vars
+datesuffix=$(date +"%Y%m%d_%H%M%S")
 emacsd="${HOME}/.emacs.d"
-emacsdbkp="${HOME}/.emacs.d_backup"
+emacsdbkp="${emacsd}_backup"
 doomd="${HOME}/.doom.d"
-doomdbkp="${HOME}/.doom.d_backup"
+doomdbkp="${doomd}_backup"
 
 # Execute appropriate function
 option="${optArray[0]}"
