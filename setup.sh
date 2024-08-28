@@ -193,27 +193,32 @@ install_doom()
 uninstall_doom()
 {
     warning "This will PERMANENTLY remove your current ~/.emacs.d and ~/.doom.d configuration"
-    user_yesno "Are you sure you want to do this?"
+    user_input "Are you sure you want to do this?"
 
     info "Removing configuration directories..."
     rm -rf "${emacsd}"
     rm -rf "${emacsd}"
     info "Done"
 
-    debug "Looking for previously backed-up config directories"
-    embkp=`ls -dt "${emacsdbkp}_"* 2>/dev/null`
-    dmbkp=`ls -dt "${doomdbkp}_"* 2>/dev/null`
+    user_yesno "Do you want to restore previously backed-up configuration directories?"
+    ans=$?
+    if [[ "${ans}" -eq 1 ]]; then
+      debug "Looking for previously backed-up config directories"
+      embkp=`ls -dt "${emacsdbkp}_"* 2>/dev/null`
+      dmbkp=`ls -dt "${doomdbkp}_"* 2>/dev/null`
 
-    if [[ -n "${embkp}" ]]; then
-      info "Restoring ${embkp}"
-      mv "${embkp}" "${emacsd}"
-      info "Done"
+      if [[ -n "${embkp}" ]]; then
+        info "Restoring ${embkp}"
+        mv "${embkp}" "${emacsd}"
+        info "Done"
+      fi
+      if [[ -n "${dmbkp}" ]]; then
+        info "Restoring ${dmbkp}"
+        mv "${embkp}" "${emacsd}"
+        info "Done"
+      fi
     fi
-    if [[ -n "${dmbkp}" ]]; then
-      info "Restoring ${dmbkp}"
-      mv "${embkp}" "${emacsd}"
-      info "Done"
-    fi
+
     info "ALL DONE"
 }
 
