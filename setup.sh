@@ -139,7 +139,7 @@ pkg_install()
         debug "Found package ${pkg} on system"
       else
         debug "Package ${pkg} is not installed"
-        sudo "${pkgmgr}" install -f "${pkg}"
+        sudo "${pkgmgr}" install "${pkg}"
       fi
     done
 }
