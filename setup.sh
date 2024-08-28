@@ -156,6 +156,7 @@ install_doom()
     fi
 
     determine_sourcedir sourcedir
+
     if [[ -d "${emacsd}" ]]; then
         embkp="${emacsdbkp}_${datesuffix}"
         warn "Found existing ${emacsd}! Do you want to create a backup copy and continue?"
@@ -170,13 +171,17 @@ install_doom()
         mv "${doomd}" "${dmbkp}"
         debug "Renamed ${doomd} to ${dmbkp}"
     fi
+
     info "Setting up ${emacsd}..."
     cp -r "${sourcedir}/.emacs.d" "${emacsd}"
     info "Done"
     info "Setting up ${doomd}..."
     cp -r "${sourcedir}/.doom.d" "${doomd}"
     info "Done"
+
     info "Running doom installer..."
+    debug "Ensure installer is executable"
+    chmod +x "${emacsd}/bin/"*
     "${emacsd}/bin/doom" install
     info "Done"
     info "Remember to install Doom's fonts using"
