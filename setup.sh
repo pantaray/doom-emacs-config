@@ -111,7 +111,7 @@ determine_sourcedir()
 {
     emacsver=`emacs --version | awk 'NR==1{print $3}'`
     debug "Found Emacs version ${emacsver}"
-    if (( $(echo "${emacsver} > 26" |bc -l) )); then
+    if (( $(echo "${emacsver} > 26.3" |bc -l) )); then
         sourcedir="./emacs29"
     else
         sourcedir="./emacs26"
