@@ -192,7 +192,7 @@ install_doom()
 
 uninstall_doom()
 {
-    warning "This will PERMANENTLY remove your current ~/.emacs.d and ~/.doom.d configuration"
+    warn "This will PERMANENTLY remove your current ~/.emacs.d and ~/.doom.d configuration"
     user_input "Are you sure you want to do this?"
 
     info "Removing configuration directories..."
