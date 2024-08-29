@@ -184,6 +184,7 @@ install_doom()
     chmod +x "${emacsd}/bin/"*
     "${emacsd}/bin/doom" install
     info "Done"
+
     info "Remember to install Doom's fonts using"
     info "   M-x nerd-icons-install-fonts"
     info "ALL DONE"
@@ -220,14 +221,22 @@ uninstall_doom()
     fi
 
     info "ALL DONE"
+    return 0
 }
 
 update_doom()
 {
     determine_sourcedir sourcedir
+
     info "Updating config in ${doomd}..."
     cp "${sourcedir}/.doom.d/"* "${doomd}/"
     info "Done"
+
+    info "Running doom sync"
+    "${emacsd}/bin/doom" sync
+    info "Done"
+
+    info "ALL DONE"
     return 0
 }
 
