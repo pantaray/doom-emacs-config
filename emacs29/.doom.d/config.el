@@ -79,6 +79,8 @@
 
 (after! doom (cua-mode +1))
 
+(after! doom (global-display-fill-column-indicator-mode +1))
+
 (setq kill-whole-line t)
 
 (setq doom-leader-alt-key "M-,"
