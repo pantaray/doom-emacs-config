@@ -77,9 +77,7 @@
 ;; they are implemented.
 ;;
 
-(after! doom (cua-mode +1))
-
-(after! doom (global-display-fill-column-indicator-mode +1))
+(cua-mode t)
 
 (setq kill-whole-line t)
 
