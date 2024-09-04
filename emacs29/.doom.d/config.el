@@ -77,13 +77,11 @@
 ;; they are implemented.
 ;;
 
-(after! doom (cua-mode +1))
-
-(after! doom (global-display-fill-column-indicator-mode +1))
-
-(setq kill-whole-line t)
-
-(setq doom-leader-alt-key "M-,"
-      doom-localleader-alt-key "M-, m")
-
-(setq doom-font (font-spec :size 13.0 ))
+(after! doom
+  (cua-mode +1)
+  (global-display-fill-column-indicator-mode +1)
+  (require 'quarto-mode)
+  (setq doom-leader-alt-key "M-,"
+        doom-localleader-alt-key "M-, m"
+        kill-whole-line t
+        doom-font (font-spec :size 11.0 )))
