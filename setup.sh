@@ -18,6 +18,8 @@ Examples:
         Installs
     $(basename "$0") --uninstall
         Uninstalls
+    $(basename "$0") --update
+        Updates an existing Doom Emacs installation
 
 "
 

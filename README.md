@@ -20,8 +20,8 @@ chmod +x setup.sh
 **Note** This Doom setup is configured to use the 
 [Python LSP server for Emacs](https://emacs-lsp.github.io/lsp-mode/page/lsp-pylsp/) 
 to enable auto-completion etc. in Python. The language server must be installed 
-on the system outside of Emacs (e.g., `pip install 'python-lsp-server[all]'`) 
-to use its functionality. 
+on the system outside of Emacs (e.g., `pip install 'python-lsp-server[all]'` or 
+`apt install python3-pylsp` on modern Debian systems) to use its functionality. 
 
 ## Usage 
 
