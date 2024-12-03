@@ -4,14 +4,15 @@
 #
 
 usage="
-$(basename "$0") [--help] --install/--uninstall [--verbose]
+$(basename "$0") [--help] --install/--uninstall/--update [--verbose]
 
-Install/Remove Doom Emacs configuration from system
+Install/Remove/Update Doom Emacs configuration
 
 Arguments:
     --install    Set up ~/.emacs.d and ~/.doom.d with configuration contained
                  in this repo
     --uninstall  Remove ~/.emacs.d and ~/.doom.d
+    --update     Update contents of ~/.emacs.d and ~/.doom.d
 
 Examples:
     $(basename "$0") --install
@@ -112,6 +113,9 @@ user_yesno()
 determine_sourcedir()
 {
     emacsver=`emacs --version | awk 'NR==1{print $3}'`
+    if [[ -z "${emacsver}" ]]; then
+      error "Emacs not installed on this system"
+    fi
     debug "Found Emacs version ${emacsver}"
     if (( $(echo "${emacsver} > 26.3" |bc -l) )); then
         sourcedir="./emacs29"
