@@ -47,6 +47,29 @@ To update an existing Doom Emacs setup, use
 ./setup.sh --update
 ```
 
+### Remote Editing 
+
+By default, the provided configuration enables
+[ssh-deploy](https://github.com/cjohansson/emacs-ssh-deploy/tree/master) in Doom Emacs. 
+To use it in a project, create a file called `.dir-locals.el` at the project root with 
+appropriate settings. Note that `ssh-deploy` itself uses 
+[TRAMP](https://www.gnu.org/software/tramp/) for remote connections 
+and thus supports SSH, SFTP, FTP (among others). To use `ssh-deploy` with an 
+ssh remote host use the following settings:
+
+``` shell
+((nil . (
+  (ssh-deploy-root-local . "/path/to/project/")
+  (ssh-deploy-root-remote . "/ssh:user@remote:/remote/path/to/project/")
+  (ssh-deploy-on-explicit-save . t)
+  (ssh-deploy-force-on-explicit-save . 1)
+)))
+```
+
+Internally, TRAMP relies on the local machine's `ssh` client to establish the 
+connection. Thus, any ssh-specific options (proxies, keys, port forwards etc.) 
+can be specified in your local `~/.ssh/config`. 
+
 ## Support
 
 For general questions related to Emacs or Doom, please consult, e.g., the 
