@@ -226,11 +226,6 @@ workable results ripgrep produces, despite the error."
                (if (= code 2) 0 code)))
       (apply fn args)))
 
-  ;; Integrate with `helpful'
-  (setq counsel-describe-function-function #'helpful-callable
-        counsel-describe-variable-function #'helpful-variable
-        counsel-descbinds-function #'helpful-callable)
-
   ;; Decorate `doom/help-custom-variable' results the same way as
   ;; `counsel-describe-variable' (adds value and docstring columns).
   (ivy-configure 'doom/help-custom-variable :parent 'counsel-describe-variable)
@@ -331,6 +326,14 @@ workable results ripgrep produces, despite the error."
   (setf (alist-get 'projectile-find-file counsel-projectile-key-bindings)
         #'+ivy/projectile-find-file)
 
+  ;; HACK: Force `counsel-projectile-switch-project' to call
+  ;;   `projectile-relevant-known-projects' and initialize the known projects
+  ;;   list, because otherwise it's trying to read from the
+  ;;   `projectile-known-projects' variable directly instead of calling the
+  ;;   function of the same name.
+  ;; REVIEW: This should be fixed upstream.
+  (setq counsel-projectile-remove-current-project t)
+
   ;; no highlighting visited files; slows down the filtering
   (ivy-set-display-transformer #'counsel-projectile-find-file nil)
 
@@ -371,7 +374,7 @@ workable results ripgrep produces, despite the error."
   :when (modulep! +fuzzy)
   :unless (modulep! +prescient)
   :defer t  ; is loaded by ivy
-  :preface (when (or (not (modulep! +fuzzy))
+  :preface (when (or (modulep! -fuzzy)
                      (modulep! +prescient))
              (setq ivy--flx-featurep nil))
   :init (setq ivy-flx-limit 10000))

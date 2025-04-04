@@ -5,7 +5,7 @@
 
 ;; `elisp-mode' is loaded at startup. In order to lazy load its config we need
 ;; to pretend it isn't loaded
-(delq! 'ispell features)
+(cl-callf2 delq 'ispell features)
 
 (global-set-key [remap ispell-word] #'+spell/correct)
 
@@ -62,13 +62,15 @@
 
     (_ (doom-log "Spell checker not found. Either install `aspell', `hunspell' or `enchant'")))
 
-  (ispell-check-version))
+  (if (executable-find ispell-program-name)
+      (ispell-check-version)
+    (warn "Can't find %s in your $PATH" ispell-program-name)))
 
 
 ;;
 ;;; Implementations
 
-(eval-if! (not (modulep! +flyspell))
+(eval-if! (modulep! -flyspell)
 
     (use-package! spell-fu
       :when (executable-find "aspell")

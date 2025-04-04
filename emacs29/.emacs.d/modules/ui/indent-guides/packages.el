@@ -1,4 +1,6 @@
 ;; -*- no-byte-compile: t; -*-
 ;;; ui/indent-guides/packages.el
 
-(package! highlight-indent-guides :pin "cf352c85cd15dd18aa096ba9d9ab9b7ab493e8f6")
+(package! indent-bars
+  :recipe (:host github :repo "jdtsmith/indent-bars")
+  :pin "fa293f98abe353599353c94177fe0bb77cdbd0b8")

@@ -85,7 +85,7 @@ Can be a list of backends; accepts any value `company-backends' accepts.")
     :type-definition #'lsp-find-type-definition)
 
   ;; HACK: See emacs-lsp/lsp-mode#3577
-  (unless (modulep! :lang terraform)
+  (unless (modulep! :tools terraform)
     (setq lsp-client-packages (delete 'lsp-terraform lsp-client-packages)))
 
   (defadvice! +lsp--respect-user-defined-checkers-a (fn &rest args)
@@ -97,7 +97,7 @@ Can be a list of backends; accepts any value `company-backends' accepts.")
           (setq-local flycheck-checker old-checker))
       (apply fn args)))
 
-  (add-hook! 'lsp-mode-hook #'+lsp-optimization-mode)
+  (add-hook 'lsp-mode-hook #'+lsp-optimization-mode)
 
   (when (modulep! :completion company)
     (add-hook! 'lsp-completion-mode-hook

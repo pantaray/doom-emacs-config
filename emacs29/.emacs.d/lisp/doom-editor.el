@@ -246,11 +246,8 @@ tell you about it. Very annoying. This prevents that."
 ;;
 ;;; Extra file extensions to support
 
-(nconc
- auto-mode-alist
- '(("/LICENSE\\'" . text-mode)
-   ("\\.log\\'" . text-mode)
-   ("rc\\'" . conf-mode)))
+(add-to-list 'auto-mode-alist '("/LICENSE\\'" . text-mode))
+(add-to-list 'auto-mode-alist '("rc\\'" . conf-mode) 'append)
 
 
 ;;
@@ -258,10 +255,10 @@ tell you about it. Very annoying. This prevents that."
 
 (use-package! autorevert
   ;; revert buffers when their files/state have changed
-  :hook (focus-in . doom-auto-revert-buffers-h)
   :hook (after-save . doom-auto-revert-buffers-h)
   :hook (doom-switch-buffer . doom-auto-revert-buffer-h)
   :hook (doom-switch-window . doom-auto-revert-buffer-h)
+  :hook (doom-switch-frame . doom-auto-revert-buffers-h)
   :config
   (setq auto-revert-verbose t ; let us know when it happens
         auto-revert-use-notify nil
@@ -545,61 +542,6 @@ files, so this replace calls to `pp' with the much faster `prin1'."
                          (message ""))))) ; warn silently
         (funcall fn arg)))))
 
-(use-package! helpful
-  ;; a better *help* buffer
-  :commands helpful--read-symbol
-  :hook (helpful-mode . visual-line-mode)
-  :init
-  ;; Make `apropos' et co search more extensively. They're more useful this way.
-  (setq apropos-do-all t)
-
-  (global-set-key [remap describe-function] #'helpful-callable)
-  (global-set-key [remap describe-command]  #'helpful-command)
-  (global-set-key [remap describe-variable] #'helpful-variable)
-  (global-set-key [remap describe-key]      #'helpful-key)
-  (global-set-key [remap describe-symbol]   #'helpful-symbol)
-
-  (defun doom-use-helpful-a (fn &rest args)
-    "Force FN to use helpful instead of the old describe-* commands."
-    (letf! ((#'describe-function #'helpful-function)
-            (#'describe-variable #'helpful-variable))
-      (apply fn args)))
-
-  (after! apropos
-    ;; patch apropos buttons to call helpful instead of help
-    (dolist (fun-bt '(apropos-function apropos-macro apropos-command))
-      (button-type-put
-       fun-bt 'action
-       (lambda (button)
-         (helpful-callable (button-get button 'apropos-symbol)))))
-    (dolist (var-bt '(apropos-variable apropos-user-option))
-      (button-type-put
-       var-bt 'action
-       (lambda (button)
-         (helpful-variable (button-get button 'apropos-symbol))))))
-
-  ;; DEPRECATED: Remove when support for 29 is dropped.
-  (when (= emacs-major-version 29)
-    (defadvice! doom--find-function-search-for-symbol-save-excursion-a (fn &rest args)
-      "Suppress cursor movement by `find-function-search-for-symbol'.
-
-Addresses an unwanted side-effect in `find-function-search-for-symbol' on Emacs
-29 where the cursor is moved to a variable's definition if it's defined in the
-current buffer."
-      :around #'find-function-search-for-symbol
-      (let (buf pos)
-        (letf! (defun find-library-name (library)
-                 (let ((filename (funcall find-library-name library)))
-                   (with-current-buffer (find-file-noselect filename)
-                     (setq buf (current-buffer)
-                           pos (point)))
-                   filename))
-          (prog1 (apply fn args)
-            (when (buffer-live-p buf)
-              (with-current-buffer buf (goto-char pos))))))))
-  :config
-  (setq helpful-set-variable-function #'setq!))
-
 
 (use-package! smartparens
   ;; Auto-close delimiters and blocks as you type. It's more powerful than that,
@@ -702,29 +644,29 @@ on."
   ;; read-only, in `so-long-minor-mode', so we can have a basic editing
   ;; experience in them, at least. It will remain off in `so-long-mode',
   ;; however, because long files have a far bigger impact on Emacs performance.
-  (delq! 'font-lock-mode so-long-minor-modes)
-  (delq! 'display-line-numbers-mode so-long-minor-modes)
-  (delq! 'buffer-read-only so-long-variable-overrides 'assq)
+  (cl-callf2 delq 'font-lock-mode so-long-minor-modes)
+  (cl-callf2 delq 'display-line-numbers-mode so-long-minor-modes)
+  (setf (alist-get 'buffer-read-only so-long-variable-overrides nil t) nil)
   ;; ...but at least reduce the level of syntax highlighting
   (add-to-list 'so-long-variable-overrides '(font-lock-maximum-decoration . 1))
   ;; ...and insist that save-place not operate in large/long files
   (add-to-list 'so-long-variable-overrides '(save-place-alist . nil))
   ;; But disable everything else that may be unnecessary/expensive for large or
   ;; wide buffers.
-  (appendq! so-long-minor-modes
-            '(spell-fu-mode
-              eldoc-mode
-              highlight-numbers-mode
-              better-jumper-local-mode
-              ws-butler-mode
-              auto-composition-mode
-              undo-tree-mode
-              highlight-indent-guides-mode
-              hl-fill-column-mode
-              ;; These are redundant on Emacs 29+
-              flycheck-mode
-              smartparens-mode
-              smartparens-strict-mode)))
+  (cl-callf append so-long-minor-modes
+    '(spell-fu-mode
+      eldoc-mode
+      highlight-numbers-mode
+      better-jumper-local-mode
+      ws-butler-mode
+      auto-composition-mode
+      undo-tree-mode
+      highlight-indent-guides-mode
+      hl-fill-column-mode
+      ;; These are redundant on Emacs 29+
+      flycheck-mode
+      smartparens-mode
+      smartparens-strict-mode)))
 
 
 (use-package! ws-butler

@@ -23,8 +23,8 @@
                      (truncate (* (frame-char-height) spacing))
                    spacing)))
            (w (min (frame-parameter nil (intern (format "%s-fringe" diff-hl-side)))
-                   16))
-           (_ (if (zerop w) (setq w 16))))
+                   diff-hl-bmp-max-width))
+           (_ (if (zerop w) (setq w diff-hl-bmp-max-width))))
       (define-fringe-bitmap 'diff-hl-bmp-middle
         (make-vector
          h (string-to-number (let ((half-w (1- (/ w 2))))
@@ -69,13 +69,31 @@
     (defun +vc-gutter-enable-maybe-h ()
       "Conditionally enable `diff-hl-dired-mode' in dired buffers.
 Respects `diff-hl-disable-on-remote'."
-      (unless (and (bound-and-true-p dirvish-override-dired-mode)
-                   (bound-and-true-p diff-hl-disable-on-remote)
+      ;; Neither `diff-hl-dired-mode' or `diff-hl-dired-mode-unless-remote'
+      ;; respect `diff-hl-disable-on-remote', so...
+      (unless (and (bound-and-true-p diff-hl-disable-on-remote)
                    (file-remote-p default-directory))
         (diff-hl-dired-mode +1))))
 
+  ;; HACK: diff-hl won't be visible in TTY frames, but there's no simple way to
+  ;;   use the fringe in GUI Emacs *and* use the margin in the terminal *AND*
+  ;;   support daemon users, so we need more than a static `display-graphic-p'
+  ;;   check at startup.
+  (if (not (daemonp))
+      (unless (display-graphic-p)
+        (add-hook 'global-diff-hl-mode-hook #'diff-hl-margin-mode))
+    (when (modulep! :os tty)
+      (put 'diff-hl-mode 'last t)
+      (add-hook! 'doom-switch-window-hook
+        (defun +vc-gutter-use-margins-in-tty-h ()
+          (when (bound-and-true-p global-diff-hl-mode)
+            (let ((graphic? (display-graphic-p)))
+              (unless (eq (get 'diff-hl-mode 'last) graphic?)
+                (diff-hl-margin-mode (if graphic? -1 +1))
+                (put 'diff-hl-mode 'last graphic?))))))))
+
   :config
-  (set-popup-rule! "^\\*diff-hl" :select nil :size '+popup-shrink-to-fit)
+  (set-popup-rule! "^\\*diff-hl" :select nil)
 
   (setq diff-hl-global-modes '(not image-mode pdf-view-mode))
   ;; PERF: A slightly faster algorithm for diffing.
@@ -100,17 +118,16 @@ Respects `diff-hl-disable-on-remote'."
           :n "{" #'diff-hl-show-hunk-previous
           :n "}" #'diff-hl-show-hunk-next
           :n "S" #'diff-hl-show-hunk-stage-hunk))
-  ;; UX: Refresh gutter on ESC or refocusing the Emacs frame.
-  (add-hook! '(doom-escape-hook doom-switch-window-hook) :append
+  ;; UX: Refresh gutter in the selected buffer on ESC, switching windows, or
+  ;;   refocusing the frame.
+  (add-hook! '(doom-escape-hook doom-switch-window-hook doom-switch-frame-hook) :append
     (defun +vc-gutter-update-h (&rest _)
       "Return nil to prevent shadowing other `doom-escape-hook' hooks."
-      (ignore (or inhibit-redisplay
-                  (and (or (bound-and-true-p diff-hl-mode)
-                           (bound-and-true-p diff-hl-dir-mode))
-                       (diff-hl-update-once))))))
+      (ignore (and (or (bound-and-true-p diff-hl-mode)
+                       (bound-and-true-p diff-hl-dir-mode))
+                   (diff-hl-update-once)))))
   ;; UX: Update diff-hl when magit alters git state.
   (when (modulep! :tools magit)
-    (add-hook 'magit-pre-refresh-hook  #'diff-hl-magit-pre-refresh)
     (add-hook 'magit-post-refresh-hook #'diff-hl-magit-post-refresh))
 
   ;; FIX: The revert popup consumes 50% of the frame, whether or not you're
@@ -194,19 +211,4 @@ Respects `diff-hl-disable-on-remote'."
     :before #'kill-buffer
     (when-let ((buf (ignore-errors (window-normalize-buffer buf))))
       (with-current-buffer buf
-        (+vc-gutter--kill-thread t))))
-
-  ;; HACK: diff-hl won't be visible in TTY frames, but there's no simple way to
-  ;;   use the fringe in GUI Emacs and use the margin in the terminal *AND*
-  ;;   support daemon users, so we need more than a static `display-graphic-p'
-  ;;   check at startup.
-  (when (modulep! :os tty)
-    (put 'diff-hl-mode 'last (display-graphic-p))
-    (add-hook! 'doom-switch-window-hook
-      (defun +vc-gutter-use-margins-in-tty-h ()
-        (let ((graphic? (display-graphic-p)))
-          (unless (and global-diff-hl-mode (eq (get 'diff-hl-mode 'last) graphic?))
-            (global-diff-hl-mode -1)
-            (diff-hl-margin-mode (if graphic? -1 +1))
-            (global-diff-hl-mode +1)
-            (put 'diff-hl-mode 'last graphic?)))))))
+        (+vc-gutter--kill-thread t)))))

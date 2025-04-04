@@ -10,6 +10,7 @@
   `(;; Doom variables
     (doom-print-minimum-level . debug)
     (doom-inhibit-log . nil)
+    (doom-log-level . 2)
 
     ;; Emacs variables
     async-debug
@@ -198,13 +199,15 @@ Activate this advice with:
 -q or -Q, for example:
 
   emacs -Q -l init.el -f doom-run-all-startup-hooks-h"
-  (setq after-init-time (current-time))
+  (setq after-init-time (current-time)
+        doom-init-time (current-time))
   (let ((inhibit-startup-hooks nil))
     (doom-run-hooks 'after-init-hook
                     'delayed-warnings-hook
                     'emacs-startup-hook
                     'tty-setup-hook
-                    'window-setup-hook)))
+                    'window-setup-hook
+                    'doom-after-init-hook)))
 
 
 ;;
@@ -230,7 +233,9 @@ Activate this advice with:
   "Returns diagnostic information about the current Emacs session in markdown,
 ready to be pasted in a bug report on github."
   (require 'vc-git)
-  (require 'doom-packages)
+  (doom-require 'doom-lib 'profiles)
+  (doom-require 'doom-lib 'modules)
+  (doom-require 'doom-lib 'packages)
   (let ((default-directory doom-emacs-dir))
     (letf! ((defun sh (&rest args) (cdr (apply #'doom-call-process args)))
             (defun cat (file &optional limit)
@@ -260,11 +265,7 @@ ready to be pasted in a bug report on github."
                              (format "EMACSDIR=%s" (symlink-path doom-emacs-dir))
                              (format "EMACS=%s" (expand-file-name invocation-name invocation-directory)))))
         (doom . ,(list doom-version
-                       (if doom-profile
-                           (format "PROFILE=%s@%s"
-                                   (car doom-profile)
-                                   (cdr doom-profile))
-                         "PROFILE=_@0")
+                       (format "PROFILE=%s" (doom-profile->id (doom-profile-key doom-profile t)))
                        (if (file-exists-p! ".git" doom-emacs-dir)
                            (sh "git" "log" "-1" "--format=%D %h %ci")
                          "[no repo]")
@@ -314,8 +315,8 @@ ready to be pasted in a bug report on github."
                         do (setq lastcat cat)
                         and collect lastcat
                         collect
-                        (let* ((flags (doom-module-get lastcat mod :flags))
-                               (path  (doom-module-get lastcat mod :path))
+                        (let* ((flags (doom-module-get (cons lastcat mod) :flags))
+                               (path  (doom-module-get (cons lastcat mod) :path))
                                (module
                                 (append
                                  (cond ((null path)

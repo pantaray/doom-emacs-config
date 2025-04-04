@@ -1,29 +1,28 @@
 ;; -*- no-byte-compile: t; -*-
 ;;; completion/vertico/packages.el
 
-(package! vertico :pin "ba650a7ab90d66686ba787937ac9e71f749c598e")
+(package! vertico :pin "e0bb699ebf9e41893dbd19e7d19381fa73c08bc1")
 
-(package! orderless :pin "53f5204ad3f541e11eb6eeb9b86584964b7a3678")
+(package! orderless :pin "254f2412489bbbf62700f9d3d5f18e537841dcc3")
 
-(package! consult :pin "fe4852280006e61be7f1374d021ee06155ce5a26")
-(package! consult-dir :pin "15891383f34d43acc5bb82bda92239b1f54cf178")
-(when (and (modulep! :checkers syntax)
-           (not (modulep! :checkers syntax +flymake)))
-  (package! consult-flycheck :pin "754f5497d827f7d58009256a21af614cc44378a3"))
-(package! embark :pin "9c166c4b96a0b1e85401bcc6fb95ce021e7b5013")
-(package! embark-consult :pin "9c166c4b96a0b1e85401bcc6fb95ce021e7b5013")
+(package! consult :pin "f94d557807451a733b71a2c41d43175ec6ed3248")
+(package! consult-dir :pin "4532b8d215d16b0159691ce4dee693e72d71e0ff")
+(when (modulep! :checkers syntax -flymake)
+  (package! consult-flycheck :pin "3bc2141daf8cfad7e4d2e2f78b15d45033f707a5"))
+(package! embark :pin "d5df0eff182b014ab49328a4dbb1d69eb7faafbd")
+(package! embark-consult :pin "d5df0eff182b014ab49328a4dbb1d69eb7faafbd")
 
-(package! marginalia :pin "da72da4622c7b38741e6968678028f7e0564816c")
+(package! marginalia :pin "c51fd9e4d4258543e0cd8dedda941789163bec5a")
 
-(package! wgrep :pin "208b9d01cfffa71037527e3a324684b3ce45ddc4")
+(package! wgrep :pin "49f09ab9b706d2312cab1199e1eeb1bcd3f27f6f")
 
 (when (modulep! +icons)
-  (package! nerd-icons-completion :pin "c2db8557a3c1a9588d111f8c8e91cae96ee85010"))
+  (package! nerd-icons-completion :pin "8e5b995eb2439850ab21ba6062d9e6942c82ab9c"))
 
 (when (modulep! +childframe)
   (package! vertico-posframe
     :recipe (:host github :repo "tumashu/vertico-posframe")
-    :pin "2e0e09e5bbd6ec576ddbe566ab122575ef051fab"))
+    :pin "c5a8b5f72a582e88a2a696a3bbc2df7af28bd229"))
 
 (when (modulep! :editor snippets)
   (package! consult-yasnippet :pin "834d39acfe8a7d2c304afbe4d649b9372118c756"))

@@ -13,11 +13,11 @@ to a pop up buffer."
           (debug-on-error t))
       (unwind-protect
           (condition-case-unless-debug e
-              (doom-module-context-with
+              (with-doom-module
                   (doom-module-from-path
                    (or (buffer-file-name (buffer-base-buffer))
                        default-directory))
-                (doom-context-with 'eval
+                (with-doom-context 'eval
                   (eval-region beg end buffer load-read-function))
                 (with-current-buffer buffer
                   (let ((pp-max-width nil))
@@ -32,7 +32,9 @@ to a pop up buffer."
 (defun +emacs-lisp-outline-level ()
   "Return outline level for comment at point.
 Intended to replace `lisp-outline-level'."
-  (- (match-end 1) (match-beginning 1)))
+  (if (match-beginning 1)
+      (- (match-end 1) (match-beginning 1))
+    0))
 
 
 ;;
@@ -66,7 +68,7 @@ Intended to replace `lisp-outline-level'."
                           (re-search-backward
                            "\\_<:\\(?:\\sw\\|\\s_\\)+\\_>" ;; Find a keyword.
                            doom-start 'noerror))
-                (unless (looking-back "(" (bol))
+                (unless (looking-back "(" (pos-bol))
                   (let ((kw-syntax (syntax-ppss)))
                     (when (and (= (ppss-depth kw-syntax) doom-depth)
                                (not (ppss-string-terminator kw-syntax))
@@ -91,9 +93,18 @@ Intended to replace `lisp-outline-level'."
 ;;;###autoload
 (defun +emacs-lisp-lookup-definition (_thing)
   "Lookup definition of THING."
-  (if-let (module (+emacs-lisp--module-at-point))
+  (if-let* ((module (+emacs-lisp--module-at-point)))
       (doom/help-modules (car module) (cadr module) 'visit-dir)
     (call-interactively #'elisp-def)))
+
+(defun +emacs-lisp--describe-symbol (symbol)
+  (if (or (not (fboundp 'helpful-symbol))
+          (cl-some (lambda (x) (funcall (nth 1 x) symbol))
+                   describe-symbol-backends))
+      (progn
+        (describe-symbol symbol)
+        (pop-to-buffer (help-buffer)))
+    (helpful-symbol symbol)))
 
 ;;;###autoload
 (defun +emacs-lisp-lookup-documentation (thing)
@@ -116,61 +127,21 @@ if it's callable, `apropos' otherwise."
                            '(outline org-fold-outline))
                  (org-show-hidden-entry))))
            'deferred))
-        (thing (helpful-symbol (intern thing)))
-        ((call-interactively #'helpful-at-point))))
+        (thing
+         (let ((thing (intern thing)))
+           (if (and (not (cl-find-class thing))
+                    (fboundp 'helpful-symbol))
+               (helpful-symbol thing)
+             (describe-symbol thing)
+             (pop-to-buffer (help-buffer)))))
+        ((call-interactively
+          (if (fboundp #'helpful-at-point)
+              #'helpful-at-point
+            #'describe-symbol)))))
 
 ;; DEPRECATED Remove when 28 support is dropped.
 (unless (fboundp 'lisp--local-defform-body-p)
   (fset 'lisp--local-defform-body-p #'ignore))
-
-;;;###autoload
-(defun +emacs-lisp-indent-function (indent-point state)
-  "A replacement for `lisp-indent-function'.
-
-Indents plists more sensibly. Adapted from
-https://emacs.stackexchange.com/questions/10230/how-to-indent-keywords-aligned"
-  (let ((normal-indent (current-column))
-        (orig-point (point))
-        ;; TODO Refactor `target' usage (ew!)
-        target)
-    (goto-char (1+ (elt state 1)))
-    (parse-partial-sexp (point) calculate-lisp-indent-last-sexp 0 t)
-    (cond ((and (elt state 2)
-                (or (eq (char-after) ?:)
-                    (not (looking-at-p "\\sw\\|\\s_"))))
-           (if (lisp--local-defform-body-p state)
-               (lisp-indent-defform state indent-point)
-             (unless (> (save-excursion (forward-line 1) (point))
-                        calculate-lisp-indent-last-sexp)
-               (goto-char calculate-lisp-indent-last-sexp)
-               (beginning-of-line)
-               (parse-partial-sexp (point) calculate-lisp-indent-last-sexp 0 t))
-             (backward-prefix-chars)
-             (current-column)))
-          ((and (save-excursion
-                  (goto-char indent-point)
-                  (skip-syntax-forward " ")
-                  (not (eq (char-after) ?:)))
-                (save-excursion
-                  (goto-char orig-point)
-                  (and (eq (char-after) ?:)
-                       (eq (char-before) ?\()
-                       (setq target (current-column)))))
-           (save-excursion
-             (move-to-column target t)
-             target))
-          ((let* ((function (buffer-substring (point) (progn (forward-sexp 1) (point))))
-                  (method (or (function-get (intern-soft function) 'lisp-indent-function)
-                              (get (intern-soft function) 'lisp-indent-hook))))
-             (cond ((or (eq method 'defun)
-                        (and (null method)
-                             (> (length function) 3)
-                             (string-match-p "\\`def" function)))
-                    (lisp-indent-defform state indent-point))
-                   ((integerp method)
-                    (lisp-indent-specform method state indent-point normal-indent))
-                   (method
-                    (funcall method indent-point state))))))))
 
 
 ;;
@@ -241,8 +212,7 @@ https://emacs.stackexchange.com/questions/10230/how-to-indent-keywords-aligned"
 (defun +emacs-lisp-extend-imenu-h ()
   "Improve imenu support in `emacs-lisp-mode' for Doom's APIs."
   (setq imenu-generic-expression
-        `(("Section" "^[ \t]*;;;*\\**[ \t]+\\([^\n]+\\)" 1)
-          ("Evil commands" "^\\s-*(evil-define-\\(?:command\\|operator\\|motion\\) +\\(\\_<[^ ()\n]+\\_>\\)" 1)
+        `(("Evil commands" "^\\s-*(evil-define-\\(?:command\\|operator\\|motion\\) +\\(\\_<[^ ()\n]+\\_>\\)" 1)
           ("Unit tests" "^\\s-*(\\(?:ert-deftest\\|describe\\) +\"\\([^\")]+\\)\"" 1)
           ("Package" "^\\s-*\\(?:;;;###package\\|(\\(?:package!\\|use-package!?\\|after!\\)\\) +\\(\\_<[^ ()\n]+\\_>\\)" 1)
           ("Major modes" "^\\s-*(define-derived-mode +\\([^ ()\n]+\\)" 1)
@@ -255,7 +225,8 @@ https://emacs.stackexchange.com/questions/10230/how-to-indent-keywords-aligned"
           ("CLI Command" "^\\s-*(\\(def\\(?:cli\\|alias\\|obsolete\\|autoload\\)! +\\([^\n]+\\)\\)" 1)
           ("Functions" "^\\s-*(\\(?:cl-\\)?def\\(?:un\\|un\\*\\|method\\|generic\\|-memoized!\\) +\\([^ ,)\n]+\\)" 1)
           ("Variables" "^\\s-*(\\(def\\(?:c\\(?:onst\\(?:ant\\)?\\|ustom\\)\\|ine-symbol-macro\\|parameter\\|var\\(?:-local\\)?\\)\\)\\s-+\\(\\(?:\\sw\\|\\s_\\|\\\\.\\)+\\)" 2)
-          ("Types" "^\\s-*(\\(cl-def\\(?:struct\\|type\\)\\|def\\(?:class\\|face\\|group\\|ine-\\(?:condition\\|error\\|widget\\)\\|package\\|struct\\|t\\(?:\\(?:hem\\|yp\\)e\\)\\)\\)\\s-+'?\\(\\(?:\\sw\\|\\s_\\|\\\\.\\)+\\)" 2))))
+          ("Types" "^\\s-*(\\(cl-def\\(?:struct\\|type\\)\\|def\\(?:class\\|face\\|group\\|ine-\\(?:condition\\|error\\|widget\\)\\|package\\|struct\\|t\\(?:\\(?:hem\\|yp\\)e\\)\\)\\)\\s-+'?(?\\(\\(?:\\sw\\|\\s_\\|\\\\.\\)+\\)" 2)
+          ("Section" "^[ \t]*;;;+\\**[ \t]+\\([^\n]+\\)" 1))))
 
 (defun +emacs-lisp--in-package-buffer-p ()
   (let* ((file-path (buffer-file-name (buffer-base-buffer)))
@@ -288,55 +259,56 @@ are set by `+emacs-lisp-linter-warnings'
 
 This backend does not need to be added directly
 as `+emacs-lisp-non-package-mode' will enable it and disable the other checkers."
-  ;; if a process already exists. kill it.
-  (when (and +emacs-lisp-reduced-flymake-byte-compile--process
-             (process-live-p +emacs-lisp-reduced-flymake-byte-compile--process))
-    (kill-process +emacs-lisp-reduced-flymake-byte-compile--process))
-  (let ((source (current-buffer))
-        (tmp-file (make-temp-file "+emacs-lisp-byte-compile-src"))
-        (out-buf (generate-new-buffer "+emacs-lisp-byte-compile-out")))
-    ;; write the content to a temp file
-    (save-restriction
-      (widen)
-      (write-region nil nil tmp-file nil 'nomessage))
-    ;; make the process
-    (setq +emacs-lisp-reduced-flymake-byte-compile--process
-          (make-process
-           :name "+emacs-reduced-flymake"
-           :noquery t
-           :connection-type 'pipe
-           :buffer out-buf
-           :command `(,(expand-file-name invocation-name invocation-directory)
-                      "-Q"
-                      "--batch"
-                      ,@(mapcan (lambda (p) (list "-L" p)) elisp-flymake-byte-compile-load-path)
-                      ;; this is what silences the byte compiler
-                      "--eval" ,(prin1-to-string `(setq doom-modules ',doom-modules
-                                                        doom-disabled-packages ',doom-disabled-packages
-                                                        byte-compile-warnings ',+emacs-lisp-linter-warnings))
-                      "-f" "elisp-flymake--batch-compile-for-flymake"
-                      ,tmp-file)
-           :stderr "*stderr of +elisp-flymake-byte-compile-out*"
-           :sentinel
-           ;; deal with the process when it exits
-           (lambda (proc _event)
-             (when (memq (process-status proc) '(exit signal))
-               (unwind-protect
-                   (cond
-                    ;; if the buffer is dead or the process is not the same, log the process as old.
-                    ((or (not (buffer-live-p source))
-                         (not (with-current-buffer source (eq proc +emacs-lisp-reduced-flymake-byte-compile--process))))
-                     (flymake-log :warning "byte compile process %s is old" proc))
-                    ;; if the process exited without problem process the buffer
-                    ((zerop (process-exit-status proc))
-                     (elisp-flymake--byte-compile-done report-fn source out-buf))
-                    ;; otherwise something else horrid has gone wrong and we panic
-                    (t (funcall report-fn :panic
-                                :explanation
-                                (format "byte compile process %s died" proc))))
-                 ;; cleanup
-                 (ignore-errors (delete-file tmp-file))
-                 (kill-buffer out-buf))))))))
+  (when (doom-project-p)
+    ;; if a process already exists. kill it.
+    (when (and +emacs-lisp-reduced-flymake-byte-compile--process
+               (process-live-p +emacs-lisp-reduced-flymake-byte-compile--process))
+      (kill-process +emacs-lisp-reduced-flymake-byte-compile--process))
+    (let ((source (current-buffer))
+          (tmp-file (make-temp-file "+emacs-lisp-byte-compile-src"))
+          (out-buf (generate-new-buffer "+emacs-lisp-byte-compile-out")))
+      ;; write the content to a temp file
+      (save-restriction
+        (widen)
+        (write-region nil nil tmp-file nil 'nomessage))
+      ;; make the process
+      (setq +emacs-lisp-reduced-flymake-byte-compile--process
+            (make-process
+             :name "+emacs-reduced-flymake"
+             :noquery t
+             :connection-type 'pipe
+             :buffer out-buf
+             :command `(,(expand-file-name invocation-name invocation-directory)
+                        "-Q"
+                        "--batch"
+                        ,@(mapcan (lambda (p) (list "-L" p)) elisp-flymake-byte-compile-load-path)
+                        ;; this is what silences the byte compiler
+                        "--eval" ,(prin1-to-string `(setq doom-modules ',doom-modules
+                                                          doom-disabled-packages ',doom-disabled-packages
+                                                          byte-compile-warnings ',+emacs-lisp-linter-warnings))
+                        "-f" "elisp-flymake--batch-compile-for-flymake"
+                        ,tmp-file)
+             :stderr "*stderr of +elisp-flymake-byte-compile-out*"
+             :sentinel
+             ;; deal with the process when it exits
+             (lambda (proc _event)
+               (when (memq (process-status proc) '(exit signal))
+                 (unwind-protect
+                     (cond
+                      ;; if the buffer is dead or the process is not the same, log the process as old.
+                      ((or (not (buffer-live-p source))
+                           (not (with-current-buffer source (eq proc +emacs-lisp-reduced-flymake-byte-compile--process))))
+                       (flymake-log :warning "byte compile process %s is old" proc))
+                      ;; if the process exited without problem process the buffer
+                      ((zerop (process-exit-status proc))
+                       (elisp-flymake--byte-compile-done report-fn source out-buf))
+                      ;; otherwise something else horrid has gone wrong and we panic
+                      (t (funcall report-fn :panic
+                                  :explanation
+                                  (format "byte compile process %s died" proc))))
+                   ;; cleanup
+                   (ignore-errors (delete-file tmp-file))
+                   (kill-buffer out-buf)))))))))
 
 (define-minor-mode +emacs-lisp--flymake-non-package-mode
   ""
@@ -367,7 +339,8 @@ as `+emacs-lisp-non-package-mode' will enable it and disable the other checkers.
                         (progn
                           (require 'doom)
                           (require 'doom-cli)
-                          (require 'doom-start))
+                          (doom-initialize t)
+                          (doom-startup))
                       (error
                        (princ
                         (format "%s:%d:%d:Error:Failed to load Doom: %s\n"
@@ -377,8 +350,10 @@ as `+emacs-lisp-non-package-mode' will enable it and disable the other checkers.
                                     (car command-line-args-left))
                                 0 0 (error-message-string e)))))
                     ,(read (default-toplevel-value 'flycheck-emacs-lisp-check-form))))
-                flycheck-disabled-checkers (cons 'emacs-lisp-checkdoc
-                                                 flycheck-disabled-checkers))))
+                flycheck-disabled-checkers
+                (cons 'emacs-lisp-checkdoc
+                      (remq 'emacs-lisp-checkdoc
+                            flycheck-disabled-checkers)))))
 
 ;;;###autoload
 (define-minor-mode +emacs-lisp-non-package-mode
@@ -663,7 +638,6 @@ Adapted from URL `https://www.reddit.com/r/emacs/comments/d7x7x8/finally_fixing_
 ;;   performance sensitive, so we compile this file on-demand, at least, until
 ;;   Doom adds a formal compile step to 'doom sync'.
 (doom-compile-functions #'+emacs-lisp-highlight-vars-and-faces
-                        #'+emacs-lisp-truncate-pin
                         #'+emacs-lisp--calculate-lisp-indent-a)
 
 ;;; autoload.el ends here

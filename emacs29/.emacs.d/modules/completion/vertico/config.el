@@ -81,27 +81,21 @@ orderless."
           (?` . orderless-initialism)
           (?= . orderless-literal)
           (?^ . orderless-literal-prefix)
-          (?~ . orderless-flex)))
-
-  (defun +vertico-orderless-dispatch (pattern _index _total)
-    (cond
-     ;; Ensure $ works with Consult commands, which add disambiguation suffixes
-     ((string-suffix-p "$" pattern)
-      `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$")))))
-
-  (add-to-list 'orderless-style-dispatchers '+vertico-orderless-dispatch)
+          (?~ . orderless-flex))
+        orderless-style-dispatchers
+        '(+vertico-orderless-dispatch
+          +vertico-orderless-disambiguation-dispatch))
 
   (add-to-list
    'completion-styles-alist
-   '(+vertico-basic-remote
-     +vertico-basic-remote-try-completion
+   '(+vertico-basic-remote-try-completion
      +vertico-basic-remote-all-completions
      "Use basic completion on remote files only"))
   (setq completion-styles '(orderless basic)
         completion-category-defaults nil
         ;; note that despite override in the name orderless can still be used in
         ;; find-file etc.
-        completion-category-overrides '((file (styles +vertico-basic-remote orderless partial-completion)))
+        completion-category-overrides '((file (styles orderless partial-completion)))
         orderless-component-separator #'orderless-escapable-split-on-space)
   ;; ...otherwise find-file gets different highlighting than other commands
   (set-face-attribute 'completions-first-difference nil :inherit nil))
@@ -120,7 +114,6 @@ orderless."
     [remap Info-search]                   #'consult-info
     [remap locate]                        #'consult-locate
     [remap load-theme]                    #'consult-theme
-    [remap man]                           #'consult-man
     [remap recentf-open-files]            #'consult-recent-file
     [remap switch-to-buffer]              #'consult-buffer
     [remap switch-to-buffer-other-window] #'consult-buffer-other-window
@@ -133,6 +126,15 @@ orderless."
 `consult-buffer' needs `recentf-mode' to show file candidates."
     :before (list #'consult-recent-file #'consult-buffer)
     (recentf-mode +1))
+
+  (defadvice! +vertico--use-evil-registers-a (fn &rest args)
+    "Use `evil-register-list' if `evil-mode' is active."
+    :around #'consult-register--alist
+    (let ((register-alist
+           (if (bound-and-true-p evil-local-mode)
+               (evil-register-list)
+             register-alist)))
+      (apply fn args)))
 
   (setq consult-project-function #'doom-project-root
         consult-narrow-key "<"
@@ -249,8 +251,7 @@ orderless."
   (add-to-list 'consult-dir-sources 'consult-dir--source-tramp-local t))
 
 (use-package! consult-flycheck
-  :when (and (modulep! :checkers syntax)
-             (not (modulep! :checkers syntax +flymake)))
+  :when (modulep! :checkers syntax -flymake)
   :after (consult flycheck))
 
 (use-package! consult-yasnippet
@@ -375,13 +376,13 @@ orderless."
     "If MODE is enabled, highlight it as font-lock-constant-face."
     (let ((sym (intern cmd)))
       (with-current-buffer (nth 1 (buffer-list))
-      (if (or (eq sym major-mode)
-              (and
-               (memq sym minor-mode-list)
-               (boundp sym)
-               (symbol-value sym)))
-          (add-face-text-property 0 (length cmd) 'font-lock-constant-face 'append cmd)))
-        cmd))
+        (if (or (eq sym major-mode)
+                (and
+                 (memq sym minor-mode-list)
+                 (boundp sym)
+                 (symbol-value sym)))
+            (add-face-text-property 0 (length cmd) 'font-lock-constant-face 'append cmd)))
+      cmd))
 
   (add-to-list 'vertico-multiform-categories
                '(file

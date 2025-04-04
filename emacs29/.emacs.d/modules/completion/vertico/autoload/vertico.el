@@ -41,7 +41,7 @@
     ;; Change the split style if the initial query contains the separator.
     (when query
       (cl-destructuring-bind (&key type separator initial _function)
-          (consult--async-split-style)
+          (alist-get consult-async-split-style consult-async-split-styles-alist)
         (pcase type
           (`separator
            (replace-regexp-in-string (regexp-quote (char-to-string separator))
@@ -196,10 +196,14 @@ targets."
       (which-key--show-keymap
        (if (eq (plist-get (car targets) :type) 'embark-become)
            "Become"
-         (format "Act on %s '%s'%s"
+         (if (> (or (plist-get (car targets) :multi) 0) 1)
+             (format "Act on %s '%ss'"
+                 (plist-get (car targets) :multi)
+                 (plist-get (car targets) :type))
+             (format "Act on %s '%s'%s"
                  (plist-get (car targets) :type)
                  (embark--truncate-target (plist-get (car targets) :target))
-                 (if (cdr targets) "…" "")))
+                 (if (cdr targets) "…" ""))))
        (if prefix
            (pcase (lookup-key keymap prefix 'accept-default)
              ((and (pred keymapp) km) km)
@@ -237,3 +241,27 @@ See minad/consult#770."
 (defun +vertico-basic-remote-all-completions (string table pred point)
   (and (vertico--remote-p string)
        (completion-basic-all-completions string table pred point)))
+
+;;;###autoload
+(defun +vertico-orderless-dispatch (pattern _index _total)
+  "Like `orderless-affix-dispatch', but allows affixes to be escaped."
+  (let ((len (length pattern))
+        (alist orderless-affix-dispatch-alist))
+    (when (> len 0)
+      (cond
+       ;; Ignore single dispatcher character
+       ((and (= len 1) (alist-get (aref pattern 0) alist)) #'ignore)
+       ;; Prefix
+       ((when-let ((style (alist-get (aref pattern 0) alist))
+                   ((not (char-equal (aref pattern (max (1- len) 1)) ?\\))))
+          (cons style (substring pattern 1))))
+       ;; Suffix
+       ((when-let ((style (alist-get (aref pattern (1- len)) alist))
+                   ((not (char-equal (aref pattern (max 0 (- len 2))) ?\\))))
+          (cons style (substring pattern 0 -1))))))))
+
+;;;###autoload
+(defun +vertico-orderless-disambiguation-dispatch (pattern _index _total)
+  "Ensure $ works with Consult commands, which add disambiguation suffixes."
+  (when (char-equal (aref pattern (1- (length pattern))) ?$)
+    `(orderless-regexp . ,(concat (substring pattern 0 -1) "[\x200000-\x300000]*$"))))

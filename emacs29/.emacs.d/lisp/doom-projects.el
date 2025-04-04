@@ -2,17 +2,7 @@
 ;;; Commentary:
 ;;; Code:
 
-(defvar doom-projectile-cache-limit 10000
-  "If any project cache surpasses this many files it is purged when quitting
-Emacs.")
-
-(defvar doom-projectile-cache-blacklist '("~" "/tmp" "/")
-  "Directories that should never be cached.")
-
-(defvar doom-projectile-cache-purge-non-projects nil
-  "If non-nil, non-projects are purged from the cache on `kill-emacs-hook'.")
-
-(define-obsolete-variable-alias 'doom-projectile-fd-binary 'doom-fd-executable "v3.0.0")
+(define-obsolete-variable-alias 'doom-projectile-fd-binary 'doom-fd-executable "3.0.0")
 (defvar doom-fd-executable (cl-find-if #'executable-find (list "fdfind" "fd"))
   "The filename of the fd executable.
 
@@ -23,6 +13,11 @@ Is nil if no executable is found in your PATH during startup.")
   "The filename of the Ripgrep executable.
 
 Is nil if no executable is found in your PATH during startup.")
+
+(defvar doom-projectile-cache-dir (file-name-concat doom-profile-cache-dir "projectile/")
+  "The directory where per-project projectile file index caches are stored.
+
+Must end with a slash.")
 
 
 ;;
@@ -51,16 +46,12 @@ Is nil if no executable is found in your PATH during startup.")
              projectile-locate-dominating-file
              projectile-relevant-known-projects)
   :init
-  (setq projectile-cache-file (concat doom-cache-dir "projectile.cache")
-        ;; Auto-discovery is slow to do by default. Better to update the list
-        ;; when you need to (`projectile-discover-projects-in-search-path').
-        projectile-auto-discover nil
-        projectile-enable-caching (not noninteractive)
+  (setq projectile-enable-caching (if noninteractive t 'persistent)
         projectile-globally-ignored-files '(".DS_Store" "TAGS")
         projectile-globally-ignored-file-suffixes '(".elc" ".pyc" ".o")
         projectile-kill-buffers-filter 'kill-only-files
-        projectile-known-projects-file (concat doom-cache-dir "projectile.projects")
         projectile-ignored-projects '("~/")
+        projectile-known-projects-file (concat doom-projectile-cache-dir "projects.eld")
         projectile-ignored-project-function #'doom-project-ignored-p
         projectile-fd-executable doom-fd-executable)
 
@@ -68,19 +59,7 @@ Is nil if no executable is found in your PATH during startup.")
   (global-set-key [remap find-tag]         #'projectile-find-tag)
 
   :config
-  ;; HACK: Projectile cleans up the known projects list at startup. If this list
-  ;;   contains tramp paths, the `file-remote-p' calls will pull in tramp via
-  ;;   its `file-name-handler-alist' entry, which is expensive. Since Doom
-  ;;   already cleans up the project list on kill-emacs-hook, it's simplest to
-  ;;   inhibit this cleanup process at startup (see bbatsov/projectile#1649).
-  (letf! ((#'projectile--cleanup-known-projects #'ignore))
-    (projectile-mode +1))
-  ;; HACK: Auto-discovery and cleanup on `projectile-mode' is slow and
-  ;;   premature. Let's try to defer it until it's needed.
-  (add-transient-hook! 'projectile-relevant-known-projects
-    (projectile--cleanup-known-projects)
-    (when projectile-auto-discover
-      (projectile-discover-projects-in-search-path)))
+  (make-directory doom-projectile-cache-dir t)
 
   ;; Projectile runs four functions to determine the root (in this order):
   ;;
@@ -115,6 +94,29 @@ Is nil if no executable is found in your PATH during startup.")
   (setq compilation-buffer-name-function #'projectile-compilation-buffer-name
         compilation-save-buffers-predicate #'projectile-current-project-buffer-p)
 
+  ;; HACK: Centralize Projectile's per-project cache files, so they don't litter
+  ;;   projects with dotfiles.
+  (defadvice! doom--projectile-centralized-cache-files-a (fn &optional proot)
+    :around #'projectile-project-cache-file
+    (let* ((proot (or proot (doom-project-root) default-directory))
+           (projectile-cache-file
+            (expand-file-name
+             (format "%s-%s" (doom-project-name proot) (sha1 proot))
+             doom-projectile-cache-dir)))
+      (funcall fn proot)))
+
+  ;; HACK: `projectile-ensure-project' operates on the current value of
+  ;;   `projectile-known-projects' when prompting the using for a project, which
+  ;;   may not have been initialized yet, so do so the first time it is called.
+  ;; REVIEW: PR this upstream
+  (defadvice! doom--projectile-update-known-projects-a (dir)
+    :before #'projectile-ensure-project
+    (unless dir
+      (when (and (eq projectile-require-project-root 'prompt)
+                 (not projectile-known-projects))
+        (projectile-known-projects))
+      (advice-remove 'projectile-ensure-project #'doom--projectile-update-known-projects-a)))
+
   ;; Support the more generic .project files as an alternative to .projectile
   (defadvice! doom--projectile-dirconfig-file-a ()
     :override #'projectile-dirconfig-file
@@ -127,43 +129,6 @@ Is nil if no executable is found in your PATH during startup.")
   (put 'projectile-ag 'disabled "Use +default/search-project instead")
   (put 'projectile-ripgrep 'disabled "Use +default/search-project instead")
   (put 'projectile-grep 'disabled "Use +default/search-project instead")
-
-  ;; Treat current directory in dired as a "file in a project" and track it
-  (add-hook 'dired-before-readin-hook #'projectile-track-known-projects-find-file-hook)
-
-  ;; Accidentally indexing big directories like $HOME or / will massively bloat
-  ;; projectile's cache (into the hundreds of MBs). This purges those entries
-  ;; when exiting Emacs to prevent slowdowns/freezing when cache files are
-  ;; loaded or written to.
-  (add-hook! 'kill-emacs-hook
-    (defun doom-cleanup-project-cache-h ()
-      "Purge projectile cache entries that:
-
-a) have too many files (see `doom-projectile-cache-limit'),
-b) represent blacklisted directories that are too big, change too often or are
-   private. (see `doom-projectile-cache-blacklist'),
-c) are not valid projectile projects."
-      (when (and (bound-and-true-p projectile-projects-cache)
-                 projectile-enable-caching)
-        (setq projectile-known-projects
-              (cl-remove-if #'projectile-ignored-project-p
-                            projectile-known-projects))
-        (projectile-cleanup-known-projects)
-        (cl-loop with blacklist = (mapcar #'file-truename doom-projectile-cache-blacklist)
-                 for proot in (hash-table-keys projectile-projects-cache)
-                 if (or (not (stringp proot))
-                        (string-empty-p proot)
-                        (>= (length (gethash proot projectile-projects-cache))
-                            doom-projectile-cache-limit)
-                        (member (substring proot 0 -1) blacklist)
-                        (and doom-projectile-cache-purge-non-projects
-                             (not (doom-project-p proot)))
-                        (projectile-ignored-project-p proot))
-                 do (doom-log "Removed %S from projectile cache" proot)
-                 and do (remhash proot projectile-projects-cache)
-                 and do (remhash proot projectile-projects-cache-time)
-                 and do (remhash proot projectile-project-type-cache))
-        (projectile-serialize-cache))))
 
   ;; HACK: Some MSYS utilities auto expanded the `/' path separator, so we need
   ;;   to prevent it.
@@ -193,7 +158,7 @@ And if it's a function, evaluate it."
   (put 'projectile-git-submodule-command 'initial-value projectile-git-submodule-command)
   (setq projectile-git-submodule-command nil
         ;; Include and follow symlinks in file listings.
-        projectile-git-fd-args (concat "-L -tl " projectile-git-fd-args)
+        projectile-git-fd-args (concat "-tl " projectile-git-fd-args)
         projectile-indexing-method 'hybrid
         projectile-generic-command
         (lambda (_)
@@ -246,7 +211,9 @@ when using many of projectile's command, e.g. `projectile-compile-command',
 This suppresses the error so these commands will still run, but prompt you for
 the command instead."
     :around #'projectile-default-generic-command
-    (ignore-errors (apply fn args))))
+    (ignore-errors (apply fn args)))
+
+  (projectile-mode +1))
 
 
 ;;

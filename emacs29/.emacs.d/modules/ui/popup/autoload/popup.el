@@ -47,7 +47,7 @@ the buffer is visible, then set another timer and try again later."
   (let ((buffer (window-buffer window))
         (inhibit-quit t))
     (and (or (buffer-file-name buffer)
-             (if-let (base-buffer (buffer-base-buffer buffer))
+             (if-let* ((base-buffer (buffer-base-buffer buffer)))
                  (buffer-file-name base-buffer)))
          (buffer-modified-p buffer)
          (let ((autosave (+popup-parameter 'autosave window)))
@@ -58,7 +58,7 @@ the buffer is visible, then set another timer and try again later."
                   (funcall autosave buffer))))
          (with-current-buffer buffer (save-buffer)))
     (let ((ignore-window-parameters t))
-      (if-let (wconf (window-parameter window 'saved-wconf))
+      (if-let* ((wconf (window-parameter window 'saved-wconf)))
           (set-window-configuration wconf)
         (delete-window window)))
     (unless (window-live-p window)
@@ -297,7 +297,8 @@ Any non-nil value besides the above will be used as the raw value for
 (defun +popup-unset-modeline-on-disable-h ()
   "Restore the modeline when `+popup-buffer-mode' is deactivated."
   (when (and (not (bound-and-true-p +popup-buffer-mode))
-             (bound-and-true-p hide-mode-line-mode))
+             (bound-and-true-p hide-mode-line-mode)
+             (not (bound-and-true-p global-hide-mode-line-mode)))
     (hide-mode-line-mode -1)))
 
 ;;;###autoload
@@ -350,13 +351,13 @@ Any non-nil value besides the above will be used as the raw value for
 (defun +popup/other ()
   "Cycle through popup windows, like `other-window'. Ignores regular windows."
   (interactive)
-  (if-let (popups (cl-remove-if-not
-                   (lambda (w) (or (+popup-window-p w)
-                                   ;; This command should be able to hop between
-                                   ;; windows with a `no-other-window'
-                                   ;; parameter, since `other-window' won't.
-                                   (window-parameter w 'no-other-window)))
-                   (window-list)))
+  (if-let* ((popups (cl-remove-if-not
+                     (lambda (w) (or (+popup-window-p w)
+                                     ;; This command should be able to hop between
+                                     ;; windows with a `no-other-window'
+                                     ;; parameter, since `other-window' won't.
+                                     (window-parameter w 'no-other-window)))
+                     (window-list))))
       (select-window (if (or (+popup-window-p)
                              (window-parameter nil 'no-other-window))
                          (let ((window (selected-window)))
@@ -427,15 +428,34 @@ If no popups are available, display the *Messages* buffer in a popup window."
 
 ;;;###autoload
 (defun +popup/raise (window &optional arg)
-  "Raise the current popup window into a regular window and
-return it. If prefix ARG, raise the current popup into a new
-window and return that window."
+  "Raise a popup WINDOW into a regular window, then select it.
+
+When called interactively, the selected popup window will be raised. If the
+selected window isn't a popup, any sole, visible popup window in the active
+frame will be raised. If there are multiple visible popups, then the user will
+be prompted to select one.
+
+If prefix ARG, the popup is raised into `other-window' instead."
   (interactive
-   (list (selected-window) current-prefix-arg))
+   (list
+    (let ((win (selected-window)))
+      (if (+popup-window-p win)
+          win
+        (if-let* ((popups
+                   (cl-loop for w in (+popup-windows)
+                            collect (cons (buffer-name (window-buffer w)) w))))
+            (if (cdr popups)
+                (or (cdr (assoc (completing-read
+                                 "Select window: " (mapcar #'car popups))
+                                popups))
+                    (user-error "Aborted"))
+              (cdar popups))
+          (user-error "No popup windows to raise"))))
+    current-prefix-arg))
   (cl-check-type window window)
   (unless (+popup-window-p window)
     (user-error "Cannot raise a non-popup window"))
-  (let ((buffer (current-buffer))
+  (let ((buffer (window-buffer window))
         (+popup--inhibit-transient t)
         +popup--remember-last)
     (+popup/close window 'force)
@@ -449,12 +469,12 @@ window and return that window."
 (defun +popup/diagnose ()
   "Reveal what popup rule will be used for the current buffer."
   (interactive)
-  (if-let (rule (cl-loop with bname = (buffer-name)
-                         for (pred . action) in display-buffer-alist
-                         if (and (functionp pred) (funcall pred bname action))
-                         return (cons pred action)
-                         else if (and (stringp pred) (string-match-p pred bname))
-                         return (cons pred action)))
+  (if-let* ((rule (cl-loop with bname = (buffer-name)
+                           for (pred . action) in display-buffer-alist
+                           if (and (functionp pred) (funcall pred bname action))
+                           return (cons pred action)
+                           else if (and (stringp pred) (string-match-p pred bname))
+                           return (cons pred action))))
       (message "Rule matches: %s" rule)
     (message "No popup rule for this buffer")))
 

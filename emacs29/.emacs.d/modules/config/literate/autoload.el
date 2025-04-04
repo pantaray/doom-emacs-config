@@ -20,31 +20,40 @@
               (dest   (expand-file-name dest)))
          (print! (start "Tangling your literate config..."))
          (print-group!
-          (let (;; Do as little unnecessary work as possible in these org files.
-                (org-startup-indented nil)
-                (org-startup-folded nil)
-                (vc-handled-backends nil)
-                ;; Prevent unwanted entries in recentf, or formatters, or
-                ;; anything that could be on these hooks, really. Nothing else
-                ;; should be touching these files (particularly in interactive
-                ;; sessions).
-                (write-file-functions nil)
-                (before-save-hook nil)
-                (after-save-hook nil)
-                ;; Prevent infinite recursion due to recompile-on-save hooks
-                ;; later, and speed up `org-mode' init.
-                (org-mode-hook nil)
-                (org-inhibit-startup t)
-                ;; Allow evaluation of src blocks at tangle-time (would abort
-                ;; them otherwise). This is a security hazard, but Doom will
-                ;; trust that you know what you're doing!
-                (org-confirm-babel-evaluate nil)
-                ;; Say a little more
-                (doom-print-message-level 'info))
-            (if-let (files (org-babel-tangle-file target dest))
-                (always (print! (success "Done tangling %d file(s)!" (length files))))
-              (print! (error "Failed to tangle any blocks from your config."))
-              nil))))))
+           (let (;; Do as little unnecessary work as possible in these org files.
+                 (org-startup-indented nil)
+                 (org-startup-folded nil)
+                 (vc-handled-backends nil)
+                 ;; Prevent unwanted entries in recentf, or formatters, or
+                 ;; anything that could be on these hooks, really. Nothing else
+                 ;; should be touching these files (particularly in interactive
+                 ;; sessions).
+                 (write-file-functions nil)
+                 (before-save-hook nil)
+                 (after-save-hook nil)
+                 ;; Prevent infinite recursion due to recompile-on-save hooks
+                 ;; later, and speed up `org-mode' init.
+                 (org-mode-hook nil)
+                 (org-inhibit-startup t)
+                 ;; Allow evaluation of src blocks at tangle-time (would abort
+                 ;; them otherwise). This is a security hazard, but Doom will
+                 ;; trust that you know what you're doing!
+                 (org-confirm-babel-evaluate nil)
+                 ;; Say a little more
+                 (doom-print-message-level 'info))
+             (cond ((not (file-exists-p target))
+                    (print! (warn "No org file at %s. Skipping...") (path target))
+                    nil)
+                   ((with-temp-buffer
+                      (insert-file-contents target)
+                      (let ((case-fold-search t))
+                        (not (re-search-forward "^ *#\\+begin_src e\\(?:macs-\\)?lisp" nil t))))
+                    (print! (warn "No src blocks to tangle in %s. Skipping...") (path target))
+                    nil)
+                   ((if-let* ((files (org-babel-tangle-file target dest)))
+                        (always (print! (success "Done tangling %d file(s)!" (length files))))
+                      (print! (error "Failed to tangle any blocks from your config."))
+                      nil))))))))
 
 (defun +literate-tangle--sync ()
   "Tangles `+literate-config-file' if it has changed."
@@ -172,11 +181,11 @@ This is performed with an asyncronous Emacs process, except when
 (defun +literate-recompile-maybe-h ()
   "Recompile literate config to `doom-user-dir'.
 
-We assume any org file in `doom-user-dir' is connected to your literate
-config, and should trigger a recompile if changed."
+We assume any org file in `doom-user-dir' is connected to your literate config,
+and should trigger a recompile if changed."
   (and (file-in-directory-p
         (buffer-file-name (buffer-base-buffer))
-        (file-name-directory +literate-config-file))
+        (file-name-directory (file-truename +literate-config-file)))
        (+literate-tangle-h)))
 
 ;;; autoload.el ends here

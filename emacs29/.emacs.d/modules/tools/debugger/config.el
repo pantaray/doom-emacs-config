@@ -25,7 +25,7 @@
     ((:lang php +lsp)        :after php-mode    :require dap-php)
     ((:lang python +lsp)     :after python      :require dap-python)
     ((:lang ruby +lsp)       :after ruby-mode   :require dap-ruby)
-    ((:lang rust +lsp)       :after rustic-mode :require (dap-lldb dap-cpptools))
+    ((:lang rust +lsp)       :after rustic      :require (dap-lldb dap-cpptools))
     ((:lang javascript +lsp)
      :after (js2-mode typescript-mode)
      :require (dap-node dap-chrome dap-firefox ,@(if (featurep :system 'windows) '(dap-edge)))))
@@ -58,7 +58,7 @@
   ;; Realgud doesn't generate its autoloads properly so we do it ourselves
   (dolist (debugger +debugger--realgud-alist)
     (autoload (car debugger)
-      (if-let (sym (plist-get (cdr debugger) :package))
+      (if-let* ((sym (plist-get (cdr debugger) :package)))
           (symbol-name sym)
         "realgud")
       nil t))
@@ -110,7 +110,8 @@
 
 
 (use-package! dap-mode
-  :when (and (modulep! +lsp) (not (modulep! :tools lsp +eglot)))
+  :when (modulep! +lsp)
+  :when (modulep! :tools lsp -eglot)
   :hook (dap-mode . dap-tooltip-mode)
   :init
   (setq dap-breakpoints-file (concat doom-data-dir "dap-breakpoints")
@@ -119,7 +120,7 @@
   :config
   (pcase-dolist (`((,category . ,modules) :after ,after :require ,libs)
                  +debugger--dap-alist)
-    (when (doom-module-p category (car modules) (cadr modules))
+    (when (doom-module-active-p category (car modules) (cadr modules))
       (dolist (lib (ensure-list after))
         (with-eval-after-load lib
           (mapc #'require (ensure-list libs))))))
@@ -156,6 +157,7 @@
 
 
 (use-package! dap-ui
-  :when (and (modulep! +lsp) (not (modulep! :tools lsp +eglot)))
+  :when (modulep! +lsp)
+  :when (modulep! :tools lsp -eglot)
   :hook (dap-mode . dap-ui-mode)
   :hook (dap-ui-mode . dap-ui-controls-mode))

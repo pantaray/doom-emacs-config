@@ -1,4 +1,4 @@
 ;; -*- no-byte-compile: t; -*-
 ;;; core/use-package/packages.el
 
-(package! use-package :pin "a6e856418d2ebd053b34e0ab2fda328abeba731c")
+(package! use-package :pin "d79bac45749e903a7099402111cf5ecc12f9d48f")

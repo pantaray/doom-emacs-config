@@ -49,7 +49,8 @@
                '(((memq (bound-and-true-p yas--active-field-overlay)
                         (overlays-in (1- (point)) (1+ (point))))
                   #'yas-next-field-or-maybe-expand)
-                 ((yas-maybe-expand-abbrev-key-filter 'yas-expand)
+                 ((and (bound-and-true-p yas-minor-mode)
+                       (yas-maybe-expand-abbrev-key-filter 'yas-expand))
                   #'yas-expand)))
            ,@(when (modulep! :completion company +tng)
                '(((bound-and-true-p company-mode)
@@ -101,8 +102,6 @@
           :filter ,(lambda (cmd) (when (org-at-table-p) cmd)))))
 
       (:after help :map help-mode-map
-       :n "o"       #'link-hint-open-link)
-      (:after helpful :map helpful-mode-map
        :n "o"       #'link-hint-open-link)
       (:after info :map Info-mode-map
        :n "o"       #'link-hint-open-link)
@@ -161,8 +160,9 @@
 
 ;;; :completion (in-buffer)
 (map! (:when (modulep! :completion company)
-       :i "C-@"    (cmds! (not (minibufferp)) #'company-complete-common)
-       :i "C-SPC"  (cmds! (not (minibufferp)) #'company-complete-common)
+       (:unless (bound-and-true-p evil-disable-insert-state-bindings)
+        :i "C-@"    (cmds! (not (minibufferp)) #'company-complete-common)
+        :i "C-SPC"  (cmds! (not (minibufferp)) #'company-complete-common))
        (:after company
         (:map company-active-map
          "C-w"     nil  ; don't interfere with `evil-delete-backward-word'
@@ -191,13 +191,18 @@
       (:when (modulep! :completion corfu)
        (:after corfu
         (:map corfu-mode-map
-         :i "C-SPC" #'completion-at-point
+         (:unless (bound-and-true-p evil-disable-insert-state-bindings)
+          :i "C-@"   #'completion-at-point
+          :i "C-SPC" #'completion-at-point
+          :i "C-n"   #'+corfu/dabbrev-or-next
+          :i "C-p"   #'+corfu/dabbrev-or-last)
          :n "C-SPC" (cmd! (call-interactively #'evil-insert-state)
                           (call-interactively #'completion-at-point))
          :v "C-SPC" (cmd! (call-interactively #'evil-change)
                           (call-interactively #'completion-at-point)))
         (:map corfu-map
-         :i "C-SPC" #'corfu-insert-separator
+         (:unless (bound-and-true-p evil-disable-insert-state-bindings)
+          :i "C-SPC" #'corfu-insert-separator)
          "C-k" #'corfu-previous
          "C-j" #'corfu-next
          "C-u" (cmd! (let (corfu-cycle)
@@ -435,7 +440,7 @@
 
       ;;; <leader> c --- code
       (:prefix-map ("c" . "code")
-       (:when (and (modulep! :tools lsp) (not (modulep! :tools lsp +eglot)))
+       (:when (modulep! :tools lsp -eglot)
         :desc "LSP Execute code action"              "a"   #'lsp-execute-code-action
         :desc "LSP Organize imports"                 "o"   #'lsp-organize-imports
         :desc "LSP"                                  "l"   #'+default/lsp-command-map
@@ -506,11 +511,9 @@
        :desc "Copy link to remote"         "y"   #'+vc/browse-at-remote-kill
        :desc "Copy link to homepage"       "Y"   #'+vc/browse-at-remote-kill-homepage
        :desc "Git time machine"            "t"   #'git-timemachine-toggle
-       (:when (modulep! :ui hydra)
-        :desc "SMerge"                    "m"   #'+vc/smerge-hydra/body)
        (:when (modulep! :ui vc-gutter)
-        :desc "Revert hunk at point"      "r"   #'+vc-gutter/revert-hunk
-        :desc "stage hunk at point"       "s"   #'+vc-gutter/stage-hunk
+        :desc "Revert hunk at point"      "r"   #'+vc-gutter/save-and-revert-hunk
+        :desc "Stage hunk at point"       "s"   #'+vc-gutter/stage-hunk
         :desc "Jump to next hunk"         "]"   #'+vc-gutter/next-hunk
         :desc "Jump to previous hunk"     "["   #'+vc-gutter/previous-hunk)
        (:when (modulep! :tools magit)
@@ -695,6 +698,10 @@
        (:when (modulep! :ui treemacs)
         :desc "Project sidebar" "p" #'+treemacs/toggle
         :desc "Find file in project sidebar" "P" #'treemacs-find-file)
+       (:when (modulep! :emacs dired +dirvish)
+        :desc "Open directory in dirvish"    "/" #'dirvish
+        :desc "Project sidebar"              "p" #'dirvish-side
+        :desc "Find file in project sidebar" "P" #'+dired/dirvish-side-and-follow)
        (:when (modulep! :term shell)
         :desc "Toggle shell popup"    "t" #'+shell/toggle
         :desc "Open shell here"       "T" #'+shell/here)
@@ -835,13 +842,12 @@
        :desc "Fill Column Indicator"        "c" #'global-display-fill-column-indicator-mode
        :desc "Diff Highlights (Git Gutter)" "d" #'diff-hl-mode
        :desc "Flymake"                      "f" #'flymake-mode
-       (:when (and (modulep! :checkers syntax)
-                   (not (modulep! :checkers syntax +flymake)))
+       (:when (modulep! :checkers syntax -flymake)
         :desc "Flycheck"                   "f" #'flycheck-mode)
        :desc "Frame fullscreen"             "F" #'toggle-frame-fullscreen
        :desc "Evil goggles"                 "g" #'evil-goggles-mode
        (:when (modulep! :ui indent-guides)
-        :desc "Indent guides"              "i" #'highlight-indent-guides-mode)
+        :desc "Indent guides"              "i" #'indent-bars-mode)
        :desc "Indent style"                 "I" #'doom/toggle-indent-style
        :desc "Line numbers"                 "l" #'doom/toggle-line-numbers
        (:when (modulep! :ui minimap)
@@ -849,7 +855,7 @@
        (:when (modulep! :lang org +present)
         :desc "org-tree-slide mode"        "p" #'org-tree-slide-mode)
        :desc "Read-only mode"               "r" #'read-only-mode
-       (:when (and (modulep! :checkers spell) (not (modulep! :checkers spell +flyspell)))
+       (:when (modulep! :checkers spell -flyspell)
         :desc "Spell checker"              "s" #'spell-fu-mode)
        (:when (modulep! :checkers spell +flyspell)
         :desc "Spell checker"              "s" #'flyspell-mode)

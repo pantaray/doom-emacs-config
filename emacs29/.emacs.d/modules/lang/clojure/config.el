@@ -125,15 +125,16 @@
   (after! evil
     (if (modulep! :editor evil +everywhere)
         ;; Match evil-collection keybindings to debugging overlay
-        (after! (cider-debug evil-collection-cider)
+        (after! cider-debug
           (mapc
            (lambda (replacement)
              (let* ((from (car replacement))
                     (to (cadr replacement))
                     (item (assoc from cider-debug-prompt-commands)))
-               ;; Position matters, hence the update-in-place
-               (setf (car item) (car to))
-               (setf (cdr item) (cdr to))))
+               (when item
+                 ;; Position matters, hence the update-in-place
+                 (setf (car item) (car to))
+                 (setf (cdr item) (cdr to)))))
            '((?h (?H "here" "Here"))
              (?i (?I "in" "In"))
              (?j (?J "inject" "inJect"))
@@ -281,7 +282,7 @@
 
 
 (use-package! clj-refactor
-  :when (or (not (modulep! +lsp))
+  :when (or (modulep! -lsp)
             +clojure-load-clj-refactor-with-lsp)
   :hook (clojure-mode . clj-refactor-mode)
   :config
@@ -294,9 +295,8 @@
 
 ;; clojure-lsp already uses clj-kondo under the hood
 (use-package! flycheck-clj-kondo
-  :when (and (modulep! :checkers syntax)
-             (not (modulep! :checkers syntax +flymake))
-             (not (modulep! +lsp)))
+  :when (modulep! -lsp)
+  :when (modulep! :checkers syntax -flymake)
   :after flycheck)
 
 

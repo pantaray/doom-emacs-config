@@ -6,7 +6,7 @@
   :pin "17cfa1b54800fdef2975c0c0531dad34846a5065")
 (package! compat
   :recipe (:host github :repo "emacs-compat/compat")
-  :pin "09dce8a193c5a70277512263782b82fa1cba84c0")
+  :pin "c89bba6524501bde03db6266a3ac47b266b81e02")
 (package! gcmh
   :pin "0089f9c3a6d4e9a310d0791cf6fa8f35642ecfd9")
 
@@ -15,28 +15,35 @@
   :type 'core
   :recipe `(:host github
             :repo "radian-software/straight.el"
-            :branch ,straight-repository-branch
+            :branch "develop"
             :local-repo "straight.el"
             :files ("straight*.el"))
-  :pin "88e574ae75344e39b436f863ef0344135c7b6517")
+  :pin "483b205efb2eaa6be7c0dc7078b8c9dafcffb318")
 
 ;; doom-ui.el
-(package! nerd-icons :pin "4322290303f2e12efd5685a0d22d76ed76ec7349")
-(package! hide-mode-line :pin "bc5d293576c5e08c29e694078b96a5ed85631942")
+(package! nerd-icons :pin "6612cc65373b63e85362b6a5d0bbd440b05be58b")
+(package! hide-mode-line :pin "ddd154f1e04d666cd004bf8212ead8684429350d")
 (package! highlight-numbers :pin "8b4744c7f46c72b1d3d599d4fb75ef8183dee307")
 (package! rainbow-delimiters :pin "f40ece58df8b2f0fb6c8576b527755a552a5e763")
 (package! restart-emacs :pin "1607da2bc657fe05ae01f7fdf26f716eafead02c")
 
 ;; doom-editor.el
-(package! better-jumper :pin "47622213783ece37d5337dc28d33b530540fc319")
-(package! dtrt-indent :pin "339755e4fb5245862737babf7f2c1e3bae1c129c")
-(package! helpful :pin "4ba24cac9fb14d5fdc32582cd947572040e82b2c")
-(package! smartparens :pin "ab475c78916d7b1666a495e3fe9c54b250195637")
-(package! ws-butler :pin "e3a38d93e01014cd47bf5af4924459bd145fd7c4")
+(package! better-jumper :pin "b1bf7a3c8cb820d942a0305e0e6412ef369f819c")
+(package! dtrt-indent :pin "22498ca24ac93c051d233abef630aece1ac45dd1")
+(package! smartparens :pin "b0d935c11813bcd40f8d35bae8800e0741334c29")
+(package! ws-butler
+  ;; REVIEW: emacsmirror/nongnu_elpa serves this package from a branch. To stop
+  ;;   Straight from clobbering a single repo for multiple packages, we must be
+  ;;   explicit to force it to clone it multiple times.
+  :recipe (:host github
+           :repo "emacsmirror/nongnu_elpa"
+           :branch "elpa/ws-butler"
+           :local-repo "ws-butler")
+  :pin "9ee5a7657a22e836618813c2e2b64a548d27d2ff")
 
 ;; doom-projects.el
-(package! projectile :pin "0163b335a18af0f077a474d4dc6b36e22b5e3274")
-(package! project :pin "093f42a1b612eaae0d2bdd475663c14973fe0325")
+(package! projectile :pin "55db082cdf7b849335ccf24b7ba5aa2607d6fe93")
+(package! project :pin "d193442fca61b41803baf6446e4052ed034869a6")
 
 ;; doom-keybinds.el
 (package! general :pin "826bf2b97a0fb4a34c5eb96ec2b172d682fd548f")

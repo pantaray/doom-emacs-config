@@ -9,8 +9,15 @@
 ;;; Packages
 
 (use-package! rustic
+  :mode ("\\.rs\\'" . rust-mode)
   :mode ("\\.rs\\'" . rustic-mode)
   :preface
+  ;; HACK: `rust-mode' and `rustic' add entries to `auto-mode-alist', but
+  ;;   package load order makes which gets precedence unpredictable. By removing
+  ;;   them early, we rely on the `:mode' directives above to re-insert them
+  ;;   with the correct order.
+  (setq auto-mode-alist (assoc-delete-all "\\.rs\\'" auto-mode-alist))
+
   ;; HACK `rustic' sets up some things too early. I'd rather disable it and let
   ;;   our respective modules standardize how they're initialized.
   (setq rustic-lsp-client nil)
@@ -35,14 +42,11 @@
 
   (setq rustic-indent-method-chain t)
 
-  ;; Conflicts with (and is redundant with) :ui ligatures
-  (setq rust-prettify-symbols-alist nil)
-
   ;; Leave automatic reformatting to the :editor format module.
   (setq rustic-babel-format-src-block nil
         rustic-format-trigger nil)
 
-  (if (not (modulep! +lsp))
+  (if (modulep! -lsp)
       (after! rustic-flycheck
         (add-to-list 'flycheck-checkers 'rustic-clippy))
     (setq rustic-lsp-client
