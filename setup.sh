@@ -134,6 +134,7 @@ pkg_install()
       installed="$(rpm -qa)"
       pkgmgr="dnf"
     else
+      pkgArray+=("libvterm-dev")
       debug "Found binary 'apt', assuming deb-based system"
       installed="$(dpkg-query -l)"
       pkgmgr="apt"
@@ -158,10 +159,8 @@ install_doom()
     user_yesno "Do you want to install required packages (needs sudo)?"
     ans=$?
     if [[ "${ans}" -eq 1 ]]; then
-      pkg_install
+        pkg_install
     fi
-
-    determine_sourcedir sourcedir
 
     if [[ -d "${emacsd}" ]]; then
         embkp="${emacsdbkp}_${datesuffix}"
@@ -178,9 +177,18 @@ install_doom()
         debug "Renamed ${doomd} to ${dmbkp}"
     fi
 
-    info "Setting up ${emacsd}..."
-    cp -r "${sourcedir}/.emacs.d" "${emacsd}"
+    user_yesno "Do you want to perform a fresh Doom install from github.com/hlissner/?"
+    ans=$?
+    if [[ "${ans}" -eq 1 ]]; then
+      info "Cloning doom-emacs repo from GitHub..."
+      git clone https://github.com/hlissner/doom-emacs ~/.emacs.d
+    else
+      determine_sourcedir sourcedir
+      info "Setting up ${emacsd} from this repo"
+      cp -r "${sourcedir}/.emacs.d" "${emacsd}"
+    fi
     info "Done"
+
     info "Setting up ${doomd}..."
     cp -r "${sourcedir}/.doom.d" "${doomd}"
     info "Done"
@@ -204,7 +212,7 @@ uninstall_doom()
 
     info "Removing configuration directories..."
     rm -rf "${emacsd}"
-    rm -rf "${emacsd}"
+    rm -rf "${doomd}"
     info "Done"
 
     user_yesno "Do you want to restore previously backed-up configuration directories?"
@@ -237,6 +245,16 @@ update_doom()
     info "Updating config in ${doomd}..."
     cp "${sourcedir}/.doom.d/"* "${doomd}/"
     info "Done"
+
+    user_yesno "Do you want to update doom itself from GitHub?"
+    ans=$?
+    if [[ "${ans}" -eq 1 ]]; then
+      info "Updating doom-emacs repo from GitHub..."
+      pushd "${emacsd}" > /dev/null
+      git pull
+      popd > /dev/null
+      info "Done"
+    fi
 
     info "Running doom sync"
     "${emacsd}/bin/doom" sync
