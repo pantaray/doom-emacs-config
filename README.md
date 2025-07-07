@@ -70,6 +70,29 @@ Internally, TRAMP relies on the local machine's `ssh` client to establish the
 connection. Thus, any ssh-specific options (proxies, keys, port forwards etc.) 
 can be specified in your local `~/.ssh/config`. 
 
+### AI-assisted Coding
+
+By default, the provided configuration also enables [aider.el](https://github.com/tninja/aider.el) 
+in Doom Emacs. To use it, you have to first install and set up [aider](https://aider.chat/). 
+One way of doing this is using a dedicated conda environment exclusively for aider:
+
+``` shell
+conda create -n aider python=3.12
+python -m pip install aider-install
+aider-install
+uv tool run --from aider-chat pip install google-generativeai
+```
+
+Ensure to set up API keys etc. depending on the model you want to use with aider. 
+Before integrating aider in Emacs, ensure aider itself and the communication with 
+your chosen model actually works:
+
+``` shell
+aider --model <your-model>
+```
+
+Try chatting with the model of your choice. 
+
 ## Support
 
 For general questions related to Emacs or Doom, please consult, e.g., the 

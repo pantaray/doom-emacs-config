@@ -81,7 +81,10 @@
   (cua-mode +1)
   (global-display-fill-column-indicator-mode +1)
   (require 'quarto-mode)
+  (require 'aider-doom)
+  (setenv "GEMINI_API_KEY" "your-key-here")
   (setq doom-leader-alt-key "M-,"
         doom-localleader-alt-key "M-, m"
         kill-whole-line t
+        aider-args '("--model" "gemini")
         doom-font (font-spec :size 11.0 )))

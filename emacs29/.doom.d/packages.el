@@ -50,3 +50,5 @@
 ;; (unpin! t)
 
 (package! quarto-mode)
+
+(package! aider :recipe (:host github :repo "tninja/aider.el" ))
