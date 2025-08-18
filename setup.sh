@@ -199,6 +199,10 @@ install_doom()
     "${emacsd}/bin/doom" install
     info "Done"
 
+    info "Running doom sync"
+    "${emacsd}/bin/doom" sync
+    info "Done"
+
     info "Remember to install Doom's fonts using"
     info "   M-x nerd-icons-install-fonts"
     info "ALL DONE"
