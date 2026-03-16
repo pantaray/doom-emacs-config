@@ -189,14 +189,14 @@ install_doom()
     fi
     info "Done"
 
-    info "Setting up ${doomd}..."
-    cp -r "${sourcedir}/.doom.d" "${doomd}"
-    info "Done"
-
     info "Running doom installer..."
     debug "Ensure installer is executable"
     chmod +x "${emacsd}/bin/"*
     "${emacsd}/bin/doom" install
+    info "Done"
+
+    info "Setting up ${doomd}..."
+    cp -r "${sourcedir}/.doom.d" "${doomd}"
     info "Done"
 
     info "Running doom sync"
