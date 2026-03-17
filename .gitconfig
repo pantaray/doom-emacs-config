@@ -1,0 +1,2 @@
+[filter "apikey"]
+	clean = sed 's/:key \"[^\"]*\"/:key \"api-key\"/g'
