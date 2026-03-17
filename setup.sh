@@ -110,22 +110,6 @@ user_yesno()
   done
 }
 
-determine_sourcedir()
-{
-    emacsver=`emacs --version | awk 'NR==1{print $3}'`
-    if [[ -z "${emacsver}" ]]; then
-      error "Emacs not installed on this system"
-    fi
-    debug "Found Emacs version ${emacsver}"
-    if (( $(echo "${emacsver} > 26.3" |bc -l) )); then
-        sourcedir="./emacs29"
-    else
-        sourcedir="./emacs26"
-    fi
-    debug "Using source directory ${sourcedir}"
-    eval "$1='${sourcedir}'"
-}
-
 pkg_install()
 {
     pkgArray=("emacs" "ripgrep")
@@ -180,14 +164,14 @@ install_doom()
     user_yesno "Do you want to perform a fresh Doom install from github.com/hlissner/?"
     ans=$?
     if [[ "${ans}" -eq 1 ]]; then
-      info "Cloning doom-emacs repo from GitHub..."
-      git clone https://github.com/hlissner/doom-emacs ~/.emacs.d
-    else
-      determine_sourcedir sourcedir
-      info "Setting up ${emacsd} from this repo"
-      cp -r "${sourcedir}/.emacs.d" "${emacsd}"
+        info "Cloning doom-emacs repo from GitHub..."
+        git clone https://github.com/hlissner/doom-emacs ~/.emacs.d
     fi
     info "Done"
+
+    if [[ ! -d "${doomd}" ]]; then
+        error "Doom Emacs does not seem to be downloaded. Exiting..."
+    fi
 
     info "Running doom installer..."
     debug "Ensure installer is executable"
@@ -196,7 +180,7 @@ install_doom()
     info "Done"
 
     info "Setting up ${doomd}..."
-    cp -r "${sourcedir}/.doom.d" "${doomd}"
+    cp -r "${configsrc}" "${doomd}"
     info "Done"
 
     info "Running doom sync"
@@ -244,10 +228,8 @@ uninstall_doom()
 
 update_doom()
 {
-    determine_sourcedir sourcedir
-
     info "Updating config in ${doomd}..."
-    cp "${sourcedir}/.doom.d/"* "${doomd}/"
+    cp "${configsrc}/"* "${doomd}/"
     info "Done"
 
     user_yesno "Do you want to update doom itself from GitHub?"
@@ -317,6 +299,7 @@ emacsd="${HOME}/.emacs.d"
 emacsdbkp="${emacsd}_backup"
 doomd="${HOME}/.doom.d"
 doomdbkp="${doomd}_backup"
+configsrc="./config/.doom.d"
 
 # Execute appropriate function
 option="${optArray[0]}"
