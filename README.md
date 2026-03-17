@@ -70,28 +70,13 @@ Internally, TRAMP relies on the local machine's `ssh` client to establish the
 connection. Thus, any ssh-specific options (proxies, keys, port forwards etc.) 
 can be specified in your local `~/.ssh/config`. 
 
-### AI-assisted Coding
+### AI-Assisted Coding
 
-By default, the provided configuration also enables [aider.el](https://github.com/tninja/aider.el) 
-in Doom Emacs. To use it, you have to first install and set up [aider](https://aider.chat/). 
-One way of doing this is using a dedicated conda environment exclusively for aider:
-
-``` shell
-conda create -n aider python=3.12
-python -m pip install aider-install
-aider-install
-uv tool run --from aider-chat pip install google-generativeai
-```
-
-Ensure to set up API keys etc. depending on the model you want to use with aider. 
-Before integrating aider in Emacs, ensure aider itself and the communication with 
-your chosen model actually works:
-
-``` shell
-aider --model <your-model>
-```
-
-Try chatting with the model of your choice. 
+By default, the provided configuration also enables [gpt.el](https://github.com/karthink/gptel) 
+in Doom Emacs. To use it, you have to first have to set up the model you want to 
+use in Emacs. The included example shows how to do this for Google's Gemini 
+(free tier). Once you've obtained your API key, include it in your `~/doom.d/config.el`
+and start interacting with Gemini via the keybinding `[ALT] + ,`, `[o]`, `[l]`. 
 
 ## Support
 
@@ -104,8 +89,32 @@ its [GitHub Issue Tracker](https://github.com/pantaray/doom-emacs-config/issues)
 
 ## Contributing
 
-If you want to extend/modify this configuration, feel free to fork this GitHub repository,
-commit your changes and open a [pull request](https://github.com/pantaray/doom-emacs-config/pulls).
+If you want to extend/modify this configuration, feel free to fork this GitHub repository. 
+
+Please ensure to set up the accompanying git filter to not accidentally push any LLM API 
+key(s):
+
+```shell
+git config --local include.path ../.gitconfig
+```
+
+Check if the filter has been set up correctly:
+
+```shell
+git config --list --show-origin 
+# the last line should show 
+# file:.git/../.gitconfig filter.apikey.clean=sed 's/:key "[^"]*"/:key "api-key"/g'
+```
+
+Upon committing your changes, ensure any actual API key(s) have been replaced by the 
+configured place-holder:
+
+```shell
+git commit ...
+git cat-file -p HEAD:config/.doom.d/config.el
+```
+
+Once you're done, please open a [pull request](https://github.com/pantaray/doom-emacs-config/pulls).
 
 ## Project Status
 
