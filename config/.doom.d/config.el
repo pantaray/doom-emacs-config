@@ -73,13 +73,28 @@
 ;;
 ;; You can also try 'gd' (or 'C-c c d') to jump to their definition and see how
 ;; they are implemented.
+;; For GWDG CoCo AI configuration, see:
+;; https://docs.hpc.gwdg.de/services/ai-services/coco/index.html#emacs
 (after! doom
   (cua-mode +1)
   (global-display-fill-column-indicator-mode +1)
   (setq doom-leader-alt-key "M-,"
         doom-localleader-alt-key "M-, m"
         kill-whole-line t
-        gptel-model 'gemini-2.5-flash
-        gptel-backend (gptel-make-gemini "Gemini" :key "api-key" :stream t)
+        gptel-model 'qwen3-30b-a3b-instruct-2507
+        gptel-backend
+        (gptel-make-openai "gwdg"
+          :host "chat-ai.academiccloud.de"
+          :endpoint "/v1/chat/completions"
+          :stream t
+          :key gptel-api-key
+          :models '(meta-llama-3.1-8b-instruct
+                    openai-gpt-oss-120b
+                    qwen3-235b-a22b
+                    qwen2.5-coder-32b-instruct
+                    qwen3-30b-a3b-instruct-2507
+                    )
+          )
+        ;; gptel-model 'gemini-2.5-flash
+        ;; gptel-backend (gptel-make-gemini "Gemini" :stream t :key gptel-api-key)
         doom-font (font-spec :size 11.0 )))
-

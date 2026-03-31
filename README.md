@@ -75,8 +75,14 @@ can be specified in your local `~/.ssh/config`.
 By default, the provided configuration also enables [gpt.el](https://github.com/karthink/gptel) 
 in Doom Emacs. To use it, you have to first have to set up the model you want to 
 use in Emacs. The included example shows how to do this for Google's Gemini 
-(free tier). Once you've obtained your API key, include it in your `~/doom.d/config.el`
-and start interacting with Gemini via the keybinding `[ALT] + ,`, `[o]`, `[l]`. 
+(free tier). Once you've obtained your API key, store it in `~/.authinfo` using 
+the following format:
+
+``` shell
+machine <API-URL> login apikey password <api_key>
+```
+
+Then start interacting with your LLM in Emacs via the keybinding `[ALT] + ,`, `[o]`, `[l]`. 
 
 ## Support
 
