@@ -81,18 +81,35 @@
   (setq doom-leader-alt-key "M-,"
         doom-localleader-alt-key "M-, m"
         kill-whole-line t
-        gptel-model 'qwen3-30b-a3b-instruct-2507
+        gptel-model 'qwen3-coder-30b-a3b-instruct
         gptel-backend
         (gptel-make-openai "gwdg"
           :host "chat-ai.academiccloud.de"
           :endpoint "/v1/chat/completions"
           :stream t
           :key gptel-api-key
-          :models '(meta-llama-3.1-8b-instruct
+          :models '(qwen3-coder-30b-a3b-instruct
+                    meta-llama-3.1-8b-instruct
                     openai-gpt-oss-120b
-                    qwen3-235b-a22b
-                    qwen2.5-coder-32b-instruct
+                    gemma-3-27b-it
+                    qwen3-30b-a3b-thinking-2507
                     qwen3-30b-a3b-instruct-2507
+                    qwen3-32b
+                    qwen3-235b-a22b
+                    llama-3.3-70b-instruct
+                    qwen2.5-vl-72b-instruct
+                    medgemma-27b-it
+                    qwq-32b
+                    deepseek-r1
+                    deepseek-r1-distill-llama-70b
+                    mistral-large-instruct
+                    qwen2.5-coder-32b-instruct
+                    internvl2.5-8b
+                    teuken-7b-instruct-research
+                    codestral-22b
+                    llama-3.1-sauerkrautlm-70b-instruct
+                    meta-llama-3.1-8b-rag
+                    qwen2.5-omni-7
                     )
           )
         ;; gptel-model 'gemini-2.5-flash
