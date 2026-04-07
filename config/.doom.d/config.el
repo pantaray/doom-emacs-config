@@ -92,10 +92,11 @@
                     meta-llama-3.1-8b-instruct
                     openai-gpt-oss-120b
                     gemma-3-27b-it
-                    qwen3-30b-a3b-thinking-2507
                     qwen3-30b-a3b-instruct-2507
-                    qwen3-32b
-                    qwen3-235b-a22b
+                    qwen3.5-122b-a10b
+                    qwen3.5-27b
+                    qwen3.5-35b-a3b
+                    qwen3.5-397b-a17b
                     llama-3.3-70b-instruct
                     qwen2.5-vl-72b-instruct
                     medgemma-27b-it
@@ -107,7 +108,6 @@
                     internvl2.5-8b
                     teuken-7b-instruct-research
                     codestral-22b
-                    llama-3.1-sauerkrautlm-70b-instruct
                     meta-llama-3.1-8b-rag
                     qwen2.5-omni-7
                     )
