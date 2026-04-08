@@ -169,9 +169,9 @@ install_doom()
     fi
     info "Done"
 
-    if [[ ! -d "${doomd}" ]]; then
-        error "Doom Emacs does not seem to be downloaded. Exiting..."
-    fi
+   if [[ ! -f "${emacsd}/early-init.el" ]]; then
+       error "Doom Emacs does not seem to be downloaded. Exiting..."
+   fi
 
     info "Running doom installer..."
     debug "Ensure installer is executable"
@@ -179,8 +179,13 @@ install_doom()
     "${emacsd}/bin/doom" install
     info "Done"
 
+    if [[ ! -d "${doomd}" ]]; then
+        error "Doom installer did not seem to finish successfully. Exiting..."
+    fi
+
     info "Setting up ${doomd}..."
-    cp -r "${configsrc}" "${doomd}"
+    cp "${configsrc}/"* "${doomd}/"
+    
     info "Done"
 
     info "Running doom sync"
