@@ -165,7 +165,7 @@ install_doom()
     ans=$?
     if [[ "${ans}" -eq 1 ]]; then
         info "Cloning doom-emacs repo from GitHub..."
-        git clone https://github.com/hlissner/doom-emacs ~/.emacs.d
+        git clone https://github.com/hlissner/doom-emacs "${emacsd}/"
     fi
     info "Done"
 
@@ -185,6 +185,16 @@ install_doom()
 
     info "Running doom sync"
     "${emacsd}/bin/doom" sync
+    info "Done"
+
+    user_yesno "Do you want to download the LLM Tool Collection for gpt.el from github.com/skissue/llm-tool-collection?"
+    ans=$?
+    if [[ "${ans}" -eq 1 ]]; then
+        info "Cloning llm-tool-collection repo from GitHub..."
+        pushd "${emacsd}" > /dev/null
+        git clone https://github.com/skissue/llm-tool-collection.git
+        popd > /dev/null
+    fi
     info "Done"
 
     info "Remember to install Doom's fonts using"

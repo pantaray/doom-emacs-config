@@ -114,4 +114,8 @@
           )
         ;; gptel-model 'gemini-2.5-flash
         ;; gptel-backend (gptel-make-gemini "Gemini" :stream t :key gptel-api-key)
-        doom-font (font-spec :size 11.0 )))
+        doom-font (font-spec :size 11.0 ))
+  (when (require 'llm-tool-collection nil t)
+    (mapcar (apply-partially #'apply #'gptel-make-tool)
+            (llm-tool-collection-get-all)))
+  )
