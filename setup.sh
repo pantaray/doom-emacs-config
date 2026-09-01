@@ -112,27 +112,20 @@ user_yesno()
 
 pkg_install()
 {
-    pkgArray=("emacs" "ripgrep")
     if ! type apt > /dev/null; then
       debug "Binary 'apt' not found, assuming rpm-based system"
+      pkgArray=("emacs" "ripgrep" "fd-find" "libvterm-devel" "clang" "libxml2" "shellcheck")
       installed="$(rpm -qa)"
       pkgmgr="dnf"
     else
-      pkgArray+=("libvterm-dev")
       debug "Found binary 'apt', assuming deb-based system"
+      pkgArray=("emacs-gtk" "ripgrep" "fd-find" "libvterm-dev" "fonts-symbola" "clang-format" "libxml2-utils" "shfmt" "shellcheck")
       installed="$(dpkg-query -l)"
       pkgmgr="apt"
-      pkgArray+=("spellcheck")
     fi
 
-    for pkg in "${pkgArray[@]}"; do
-      if grep -q "${pkg}" <<< "${installed}"; then
-        debug "Found package ${pkg} on system"
-      else
-        debug "Package ${pkg} is not installed"
-        sudo "${pkgmgr}" install "${pkg}"
-      fi
-    done
+    info "Installing system packages"
+    sudo "${pkgmgr}" install "${pkgArray[@]}"
 }
 
 # ==================== ACTUAL FUNCTIONALITY ====================
@@ -184,8 +177,13 @@ install_doom()
     fi
 
     info "Setting up ${doomd}..."
-    cp "${configsrc}/"* "${doomd}/"
-    
+    debug "Create backup of vanilla doom.d configuration"
+    if [[ -d "${doomd}" ]]; then
+        doomvla="${doomd}_vanilla"
+        cp -r "${doomd}" "${doomvla}"
+        debug "Created backup copy ${doomvla} of vanilla ${doomd} configuration"
+    fi
+    cp -f "${configsrc}/"* "${doomd}/"
     info "Done"
 
     info "Running doom sync"
@@ -204,6 +202,8 @@ install_doom()
 
     info "Remember to install Doom's fonts using"
     info "   M-x nerd-icons-install-fonts"
+    info "and perform diagnostics to find any missing dependencies"
+    info "   ${emacsd}/bin/doom doctor"
     info "ALL DONE"
     return 0
 }

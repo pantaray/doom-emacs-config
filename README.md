@@ -23,6 +23,14 @@ to enable auto-completion etc. in Python. The language server must be installed
 on the system outside of Emacs (e.g., `pip install 'python-lsp-server[all]'` or 
 `apt install python3-pylsp` on modern Debian systems) to use its functionality. 
 
+**Note 2: Ubuntu snap Emacs** On Ubuntu 26.04 the Emacs GUI application comes 
+packaged as snap. To make doom work with the snap version please define the path 
+to Emacs as environment variable before running this script, i.e., 
+
+``` shell
+export EMACS=/snap/emacs/current/usr/bin/emacs
+```
+
 ## Usage 
 
 To install the provided Doom Emacs configuration use 
